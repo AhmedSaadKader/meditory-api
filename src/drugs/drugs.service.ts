@@ -4,6 +4,8 @@ import { UpdateDrugDto } from './dto/update-drug.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Drug } from './entities/drug.entity';
 import { Repository } from 'typeorm';
+import { paginate, Paginated, PaginateQuery } from 'nestjs-paginate';
+import { DRUG_PAGINATION_CONFIG } from './config/pagination.config';
 
 @Injectable()
 export class DrugsService {
@@ -16,8 +18,8 @@ export class DrugsService {
     return this.drugsRepository.save(drug);
   }
 
-  findAll() {
-    return this.drugsRepository.find();
+  findAll(query: PaginateQuery): Promise<Paginated<Drug>> {
+    return paginate(query, this.drugsRepository, DRUG_PAGINATION_CONFIG);
   }
 
   findOne(id: number) {

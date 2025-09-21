@@ -10,7 +10,14 @@ import {
 import { DrugsService } from './drugs.service';
 import { CreateDrugDto } from './dto/create-drug.dto';
 import { UpdateDrugDto } from './dto/update-drug.dto';
+import { Paginate, Paginated } from 'nestjs-paginate';
+import type { PaginateQuery } from 'nestjs-paginate';
+import { Drug } from './entities/drug.entity';
+import { PaginatedSwaggerDocs } from 'nestjs-paginate/lib/swagger';
+import { DRUG_PAGINATION_CONFIG } from './config/pagination.config';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('drugs')
 @Controller('drugs')
 export class DrugsController {
   constructor(private readonly drugsService: DrugsService) {}
@@ -21,8 +28,9 @@ export class DrugsController {
   }
 
   @Get()
-  findAll() {
-    return this.drugsService.findAll();
+  @PaginatedSwaggerDocs(Drug, DRUG_PAGINATION_CONFIG)
+  findAll(@Paginate() query: PaginateQuery): Promise<Paginated<Drug>> {
+    return this.drugsService.findAll(query);
   }
 
   @Get(':id')

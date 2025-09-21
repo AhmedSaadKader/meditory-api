@@ -10,12 +10,19 @@ import { Drug } from './drugs/entities/drug.entity';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      username: 'postgres',
-      password: 'ahmed89saad',
-      database: 'pharm_ingredients_v2',
+      host: 'aws-1-eu-central-1.pooler.supabase.com',
+      port: 6543,
+      username: 'postgres.rcjwiqxsvdufkfbqbdxf',
+      password: 'vIEVLj0ESMNhCkDI',
+      database: 'postgres',
       entities: [Drug],
-      synchronize: true,
+      synchronize: false,
+      ssl: true,
+      extra: {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      },
     }),
     DrugsModule,
   ],
