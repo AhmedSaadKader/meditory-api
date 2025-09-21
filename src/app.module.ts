@@ -5,24 +5,30 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DrugsModule } from './drugs/drugs.module';
 import { Drug } from './drugs/entities/drug.entity';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'aws-1-eu-central-1.pooler.supabase.com',
-      port: 6543,
-      username: 'postgres.rcjwiqxsvdufkfbqbdxf',
-      password: 'vIEVLj0ESMNhCkDI',
-      database: 'postgres',
-      entities: [Drug],
-      synchronize: false,
-      ssl: true,
-      extra: {
-        ssl: {
-          rejectUnauthorized: false,
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get('DB_HOST'),
+        port: configService.get('DB_PORT'),
+        username: configService.get('DB_USERNAME'),
+        password: configService.get('DB_PASSWORD'),
+        database: configService.get('DB_DATABASE'),
+        entities: [Drug],
+        synchronize: false,
+        ssl: true,
+        extra: {
+          ssl: {
+            rejectUnauthorized: false,
+          },
         },
-      },
+      }),
     }),
     DrugsModule,
   ],
