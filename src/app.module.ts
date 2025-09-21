@@ -14,6 +14,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: () => ({
+        type: 'postgres',
         host: 'aws-1-eu-central-1.pooler.supabase.com',
         port: 6543,
         username: 'postgres.rcjwiqxsvdufkfbqbdxf',
