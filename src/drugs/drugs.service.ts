@@ -33,4 +33,103 @@ export class DrugsService {
   remove(id: number) {
     return this.drugsRepository.delete(id);
   }
+
+  /**
+   * Search drugs by ingredient name using optimized database function
+   * Uses find_drugs_hierarchical() which searches by:
+   * - Standard ingredient terms (exact match)
+   * - Synonyms (alternative names)
+   * - Ingredient groups (finds all drugs in the group)
+   *
+   * @param ingredientName - Ingredient to search (e.g., 'paracetamol', 'vitamin c')
+   * @param dosageForm - Optional: filter by dosage form (e.g., 'Tablet')
+   * @param route - Optional: filter by route (e.g., 'Oral')
+   * @param priceMin - Optional: minimum price
+   * @param priceMax - Optional: maximum price
+   * @param page - Page number (default 1)
+   * @param limit - Items per page (default 20, max 100)
+   */
+  async searchByIngredient(
+    ingredientName: string,
+    dosageForm?: string,
+    route?: string,
+    priceMin?: number,
+    priceMax?: number,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    // Validate and cap limit
+    limit = Math.min(limit, 100);
+    const offset = (page - 1) * limit;
+
+    // Build SQL query using database function
+    let sql = `
+      SELECT DISTINCT
+        dis.drug_name,
+        dis.company,
+        dis.price,
+        dis.group_name,
+        dis.standard_term,
+        sr.match_type,
+        df.standard_name as dosage_form,
+        r.standard_name as route
+      FROM find_drugs_hierarchical($1) sr
+      JOIN drug_ingredient_search_v2 dis
+        ON dis.drug_name = sr.drug_name
+        AND dis.standard_term = sr.standard_term
+      LEFT JOIN dosage_forms df ON dis.dosage_form_id = df.id
+      LEFT JOIN routes r ON dis.route_id = r.id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [ingredientName];
+    let paramIndex = 2;
+
+    // Add filters
+    if (dosageForm) {
+      sql += ` AND LOWER(df.standard_name) = LOWER($${paramIndex})`;
+      params.push(dosageForm);
+      paramIndex++;
+    }
+
+    if (route) {
+      sql += ` AND LOWER(r.standard_name) = LOWER($${paramIndex})`;
+      params.push(route);
+      paramIndex++;
+    }
+
+    if (priceMin !== undefined) {
+      sql += ` AND dis.price >= $${paramIndex}`;
+      params.push(priceMin);
+      paramIndex++;
+    }
+
+    if (priceMax !== undefined) {
+      sql += ` AND dis.price <= $${paramIndex}`;
+      params.push(priceMax);
+      paramIndex++;
+    }
+
+    // Get total count
+    const countSql = `SELECT COUNT(*) as total FROM (${sql}) as subquery`;
+    const countResult = await this.drugsRepository.query(countSql, params);
+    const total = parseInt(countResult[0]?.total || '0');
+
+    // Add sorting and pagination
+    sql += ` ORDER BY sr.match_type, dis.drug_name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const data = await this.drugsRepository.query(sql, params);
+
+    // Return in nestjs-paginate compatible format
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,7 +19,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         console.log('DB_USERNAME:', configService.get<string>('DB_USERNAME'));
         console.log('DB_DATABASE:', configService.get<string>('DB_DATABASE'));
 
-        return {
+        const useSSL = configService.get<string>('DB_SSL') === 'true';
+
+        const config: TypeOrmModuleOptions = {
           type: 'postgres' as const,
           host: configService.get<string>('DB_HOST'),
           port: parseInt(configService.get<string>('DB_PORT') || '5432'),
@@ -28,13 +30,17 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           database: configService.get<string>('DB_DATABASE'),
           entities: [Drug],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
-          ssl: configService.get<string>('DB_SSL') === 'true',
-          extra: {
-            ssl: {
-              rejectUnauthorized: false,
+          ...(useSSL && {
+            ssl: true,
+            extra: {
+              ssl: {
+                rejectUnauthorized: false,
+              },
             },
-          },
+          }),
         };
+
+        return config;
       },
     }),
     DrugsModule,
