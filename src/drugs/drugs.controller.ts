@@ -269,7 +269,7 @@ export class DrugsController {
     example: 20,
     description: 'Items per page (default: 20, max: 100)',
   })
-  searchAdvanced(
+  async searchAdvanced(
     @Query('drug_name') drugName?: string,
     @Query('ingredient') ingredient?: string,
     @Query('dosage_form') dosageForm?: string,
@@ -278,8 +278,11 @@ export class DrugsController {
     @Query('price_max') priceMax?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-  ) {
-    return this.drugsService.searchAdvanced(
+  ): Promise<{
+    data: unknown[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    return await this.drugsService.searchAdvanced(
       drugName,
       ingredient,
       dosageForm,

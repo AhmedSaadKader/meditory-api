@@ -261,7 +261,10 @@ export class DrugsService {
     priceMax?: number,
     page: number = 1,
     limit: number = 20,
-  ) {
+  ): Promise<{
+    data: unknown[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
     // Validate and cap limit
     limit = Math.min(limit, 100);
     const offset = (page - 1) * limit;
