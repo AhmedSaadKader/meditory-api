@@ -30,8 +30,18 @@ export class DrugsController {
 
   @Get()
   @PaginatedSwaggerDocs(Drug, DRUG_PAGINATION_CONFIG)
-  findAll(@Paginate() query: PaginateQuery): Promise<Paginated<Drug>> {
-    return this.drugsService.findAll(query);
+  @ApiQuery({
+    name: 'include_ingredients',
+    required: false,
+    type: Boolean,
+    description: 'Include standardized ingredients in response (default: false)',
+    example: false,
+  })
+  findAll(
+    @Paginate() query: PaginateQuery,
+    @Query('include_ingredients') includeIngredients?: string,
+  ): Promise<Paginated<Drug>> {
+    return this.drugsService.findAll(query, includeIngredients === 'true');
   }
 
   @Get('search/ingredient')

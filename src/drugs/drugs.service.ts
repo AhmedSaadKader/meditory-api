@@ -20,8 +20,25 @@ export class DrugsService {
     return this.drugsRepository.save(drug);
   }
 
-  findAll(query: PaginateQuery): Promise<Paginated<Drug>> {
-    return paginate(query, this.drugsRepository, DRUG_PAGINATION_CONFIG);
+  async findAll(query: PaginateQuery, includeIngredients = false): Promise<Paginated<Drug>> {
+    const result = await paginate(query, this.drugsRepository, DRUG_PAGINATION_CONFIG);
+
+    // Optionally enrich with ingredients
+    if (includeIngredients) {
+      const enrichedData = await Promise.all(
+        result.data.map(async (drug) => ({
+          ...drug,
+          ingredients: await this.getStandardizedIngredients(drug.drug_id),
+        })),
+      );
+
+      return {
+        ...result,
+        data: enrichedData,
+      };
+    }
+
+    return result;
   }
 
   async findOne(id: number) {
@@ -88,11 +105,11 @@ export class DrugsService {
         df.standard_name as dosage_form,
         r.standard_name as route
       FROM find_drugs_hierarchical($1) sr
-      JOIN drug_ingredient_search_v2 dis
+      JOIN reference.drug_ingredient_search_v2 dis
         ON dis.drug_name = sr.drug_name
         AND dis.standard_term = sr.standard_term
-      LEFT JOIN dosage_forms df ON dis.dosage_form_id = df.id
-      LEFT JOIN routes r ON dis.route_id = r.id
+      LEFT JOIN reference.dosage_forms df ON dis.dosage_form_id = df.id
+      LEFT JOIN reference.routes r ON dis.route_id = r.id
       WHERE 1=1
     `;
 
@@ -190,11 +207,11 @@ export class DrugsService {
         df.standard_name as dosage_form,
         r.standard_name as route
       FROM find_drugs_unified($1) sr
-      JOIN drug_ingredient_search_v2 dis
+      JOIN reference.drug_ingredient_search_v2 dis
         ON dis.drug_name = sr.drug_name
         AND dis.standard_term = sr.standard_term
-      LEFT JOIN dosage_forms df ON dis.dosage_form_id = df.id
-      LEFT JOIN routes r ON dis.route_id = r.id
+      LEFT JOIN reference.dosage_forms df ON dis.dosage_form_id = df.id
+      LEFT JOIN reference.routes r ON dis.route_id = r.id
       WHERE 1=1
     `;
 
@@ -300,11 +317,11 @@ export class DrugsService {
         df.standard_name as dosage_form,
         r.standard_name as route
       FROM find_drugs_advanced($1, $2) sr
-      JOIN drug_ingredient_search_v2 dis
+      JOIN reference.drug_ingredient_search_v2 dis
         ON dis.drug_name = sr.drug_name
         AND dis.standard_term = sr.standard_term
-      LEFT JOIN dosage_forms df ON dis.dosage_form_id = df.id
-      LEFT JOIN routes r ON dis.route_id = r.id
+      LEFT JOIN reference.dosage_forms df ON dis.dosage_form_id = df.id
+      LEFT JOIN reference.routes r ON dis.route_id = r.id
       WHERE 1=1
     `;
 
