@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('routes')
+@Entity({ schema: 'reference', name: 'routes' })
 export class Route {
   @PrimaryGeneratedColumn()
   id: number;

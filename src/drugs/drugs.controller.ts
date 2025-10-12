@@ -299,6 +299,31 @@ export class DrugsController {
     return this.drugsService.findOne(+id);
   }
 
+  @Get(':id/ingredients')
+  @ApiOperation({
+    summary: 'Get standardized ingredients for a specific drug',
+    description: `
+      Returns detailed ingredient information including:
+      - Standardized ingredient terms (not raw text)
+      - Ingredient groups (e.g., Analgesics, Antibiotics)
+      - Synonyms and alternative names
+      - Original raw ingredient text
+
+      This uses your sophisticated ingredient standardization system
+      with 5,118 standardized terms and 6,939 synonyms.
+    `,
+  })
+  @ApiQuery({
+    name: 'id',
+    required: true,
+    type: Number,
+    example: 2,
+    description: 'Drug ID',
+  })
+  getDrugIngredients(@Param('id') id: string) {
+    return this.drugsService.getStandardizedIngredients(+id);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDrugDto: UpdateDrugDto) {
     return this.drugsService.update(+id, updateDrugDto);

@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DrugsModule } from './drugs/drugs.module';
 import { Drug } from './drugs/entities/drug.entity';
+import { DosageForm } from './drugs/entities/dosage-form.entity';
+import { Route } from './drugs/entities/route.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -28,7 +30,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_DATABASE'),
-          entities: [Drug],
+          entities: [Drug, DosageForm, Route],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
           ...(useSSL && {
             ssl: true,

@@ -3,7 +3,7 @@ import { CreateDrugDto } from './dto/create-drug.dto';
 import { UpdateDrugDto } from './dto/update-drug.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Drug } from './entities/drug.entity';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { paginate, Paginated, PaginateQuery } from 'nestjs-paginate';
 import { DRUG_PAGINATION_CONFIG } from './config/pagination.config';
 import { sanitizeSearchTerm } from './utils/search.utils';
@@ -13,6 +13,7 @@ export class DrugsService {
   constructor(
     @InjectRepository(Drug)
     private drugsRepository: Repository<Drug>,
+    private dataSource: DataSource,
   ) {}
   create(createDrugDto: CreateDrugDto) {
     const drug = this.drugsRepository.create(createDrugDto);
@@ -23,8 +24,20 @@ export class DrugsService {
     return paginate(query, this.drugsRepository, DRUG_PAGINATION_CONFIG);
   }
 
-  findOne(id: number) {
-    return this.drugsRepository.findOne({ where: { drug_id: id } });
+  async findOne(id: number) {
+    const drug = await this.drugsRepository.findOne({ where: { drug_id: id } });
+
+    if (!drug) {
+      return null;
+    }
+
+    // Auto-enrich with standardized ingredients
+    const ingredients = await this.getStandardizedIngredients(id);
+
+    return {
+      ...drug,
+      ingredients,
+    };
   }
 
   update(id: number, updateDrugDto: UpdateDrugDto) {
@@ -350,5 +363,48 @@ export class DrugsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Get standardized ingredients for a drug using the drug_ingredient_search_v2 table
+   * This returns ingredients with their standard terms, groups, and hierarchy
+   *
+   * @param drugId - The drug ID to get ingredients for
+   * @returns Array of standardized ingredients with synonyms
+   */
+  async getStandardizedIngredients(drugId: number) {
+    const query = `
+      SELECT DISTINCT
+        dis.standard_id,
+        dis.standard_term,
+        dis.group_id,
+        dis.group_name,
+        sa.raw_ingredient_text,
+        ARRAY_AGG(DISTINCT isyn.synonym_text) FILTER (WHERE isyn.synonym_text IS NOT NULL) as synonyms
+      FROM reference.drug_ingredient_search_v2 dis
+      LEFT JOIN reference.single_actives sa
+        ON dis.single_active_id = sa.single_active_id
+      LEFT JOIN reference.ingredient_synonyms isyn
+        ON dis.standard_id = isyn.standard_id
+      WHERE dis.drug_id = $1
+      GROUP BY
+        dis.standard_id,
+        dis.standard_term,
+        dis.group_id,
+        dis.group_name,
+        sa.raw_ingredient_text
+      ORDER BY dis.standard_term;
+    `;
+
+    const result = await this.dataSource.query(query, [drugId]);
+
+    return result.map((ing: any) => ({
+      standard_id: ing.standard_id,
+      standard_term: ing.standard_term,
+      group_id: ing.group_id,
+      group_name: ing.group_name,
+      raw_text: ing.raw_ingredient_text,
+      synonyms: ing.synonyms || [],
+    }));
   }
 }

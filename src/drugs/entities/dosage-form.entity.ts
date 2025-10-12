@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('dosage_forms')
+@Entity({ schema: 'reference', name: 'dosage_forms' })
 export class DosageForm {
   @PrimaryGeneratedColumn()
   id: number;
