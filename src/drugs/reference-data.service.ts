@@ -12,8 +12,8 @@ export class ReferenceDataService {
         ig.group_name as name,
         ig.group_description as description,
         tc.category_name as therapeutic_category
-      FROM ingredient_groups ig
-      LEFT JOIN therapeutic_categories tc ON ig.therapeutic_category_id = tc.id
+      FROM reference.ingredient_groups ig
+      LEFT JOIN reference.therapeutic_categories tc ON ig.therapeutic_category_id = tc.id
       WHERE ig.is_active = true
       ORDER BY ig.group_name
     `;
@@ -39,7 +39,7 @@ export class ReferenceDataService {
         description,
         pharmaceutical_category,
         synonyms
-      FROM dosage_forms
+      FROM reference.dosage_forms
       WHERE is_standardized = true
       ORDER BY standard_name
     `;
@@ -67,7 +67,7 @@ export class ReferenceDataService {
         description,
         administration_type,
         synonyms
-      FROM routes
+      FROM reference.routes
       WHERE is_standardized = true
       ORDER BY standard_name
     `;
@@ -101,7 +101,7 @@ export class ReferenceDataService {
         primary_indications,
         contraindications,
         common_side_effects
-      FROM therapeutic_categories
+      FROM reference.therapeutic_categories
       ORDER BY category_name
     `;
 
@@ -129,7 +129,7 @@ export class ReferenceDataService {
     const query = `
       SELECT DISTINCT
         company as name
-      FROM drugs
+      FROM reference.drugs
       WHERE company IS NOT NULL
       ORDER BY company
     `;
