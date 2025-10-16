@@ -17,9 +17,11 @@ import { Drug } from './entities/drug.entity';
 import { PaginatedSwaggerDocs } from 'nestjs-paginate/lib/swagger';
 import { DRUG_PAGINATION_CONFIG } from './config/pagination.config';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('drugs')
 @Controller('drugs')
+@Public() // Mark all drug routes as public for now
 export class DrugsController {
   constructor(private readonly drugsService: DrugsService) {}
 

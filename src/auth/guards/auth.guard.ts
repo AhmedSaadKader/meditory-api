@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { GqlExecutionContext } from '@nestjs/graphql';
 import { SessionService } from '../services/session.service';
 import { RequestContext } from '../types/request-context';
 import { Permission } from '../enums/permission.enum';
@@ -106,9 +105,7 @@ export class AuthGuard implements CanActivate {
    * Extract request object from execution context
    */
   private getRequest(context: ExecutionContext): any {
-    if (context.getType<string>() === 'graphql') {
-      return GqlExecutionContext.create(context).getContext().req;
-    }
+    // For REST APIs only
     return context.switchToHttp().getRequest();
   }
 

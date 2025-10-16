@@ -3,10 +3,10 @@ import { AuthenticationMethod } from './authentication-method.entity';
 
 @ChildEntity('external')
 export class ExternalAuthenticationMethod extends AuthenticationMethod {
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   strategy: string;
 
-  @Column({ name: 'external_identifier', nullable: true })
+  @Column({ type: 'varchar', name: 'external_identifier', nullable: true })
   externalIdentifier: string;
 
   @Column({ type: 'jsonb', nullable: true })

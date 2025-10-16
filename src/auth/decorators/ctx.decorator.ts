@@ -1,5 +1,4 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { GqlExecutionContext } from '@nestjs/graphql';
 import { RequestContext } from '../types/request-context';
 
 export const REQUEST_CONTEXT_KEY = '__request_context__';
@@ -13,13 +12,7 @@ export const REQUEST_CONTEXT_KEY = '__request_context__';
  */
 export const Ctx = createParamDecorator(
   (data: unknown, context: ExecutionContext): RequestContext => {
-    // For GraphQL
-    if (context.getType<string>() === 'graphql') {
-      const gqlContext = GqlExecutionContext.create(context).getContext();
-      return gqlContext.req[REQUEST_CONTEXT_KEY];
-    }
-
-    // For REST
+    // For REST APIs only
     const request = context.switchToHttp().getRequest();
     return request[REQUEST_CONTEXT_KEY];
   },
