@@ -1,7 +1,7 @@
 # Authentication Implementation Progress
 
 **Last Updated:** 2025-01-16
-**Status:** In Progress (Database migration complete)
+**Status:** In Progress (Entities created, starting services)
 
 ---
 
@@ -14,57 +14,57 @@
 - [x] Seed default roles (superadmin, pharmacist, pharmacy_admin)
 
 ### Dependencies
-- [ ] Install bcrypt and @types/bcrypt
-- [ ] Install cookie-session and @types/cookie-session
+- [x] Install bcrypt and @types/bcrypt
+- [x] Install cookie-session and @types/cookie-session
 - [ ] Install @nestjs/cache-manager (optional)
-- [ ] Update package.json
+- [x] Update package.json
 
 ---
 
 ## Phase 2: Core Entities
 
 ### User Entity
-- [ ] Create `src/auth/entities/user.entity.ts`
-- [ ] Add TypeORM decorators (@Entity, @Column, etc.)
-- [ ] Add relations (authenticationMethods, sessions, roles)
-- [ ] Add helper methods (isDeleted, softDelete, restore)
+- [x] Create `src/auth/entities/user.entity.ts`
+- [x] Add TypeORM decorators (@Entity, @Column, etc.)
+- [x] Add relations (authenticationMethods, sessions, roles)
+- [x] Add helper methods (isDeleted, softDelete, restore)
 
 ### Authentication Method Entity
-- [ ] Create `src/auth/entities/authentication-method.entity.ts`
-- [ ] Add Single Table Inheritance (STI) pattern
-- [ ] Create NativeAuthenticationMethod subclass
-- [ ] Create ExternalAuthenticationMethod subclass (optional)
+- [x] Create `src/auth/entities/authentication-method.entity.ts`
+- [x] Add Single Table Inheritance (STI) pattern
+- [x] Create NativeAuthenticationMethod subclass
+- [x] Create ExternalAuthenticationMethod subclass (optional)
 
 ### Session Entity
-- [ ] Create `src/auth/entities/session.entity.ts`
-- [ ] Add relation to User
-- [ ] Add isValid() method
-- [ ] Add session metadata (ip_address, user_agent)
+- [x] Create `src/auth/entities/session.entity.ts`
+- [x] Add relation to User
+- [x] Add isValid() method
+- [x] Add session metadata (ip_address, user_agent)
 
 ### Role Entity
-- [ ] Create `src/auth/entities/role.entity.ts`
-- [ ] Add permissions array field
-- [ ] Add relation to users (many-to-many)
-- [ ] Add is_system field protection
+- [x] Create `src/auth/entities/role.entity.ts`
+- [x] Add permissions array field
+- [x] Add relation to users (many-to-many)
+- [x] Add is_system field protection
 
 ### UserRole Entity (Join Table)
-- [ ] Create `src/auth/entities/user-role.entity.ts`
-- [ ] Add user and role relations
-- [ ] Add assigned_by tracking
+- [x] Create `src/auth/entities/user-role.entity.ts`
+- [x] Add user and role relations
+- [x] Add assigned_by tracking
 
 ### AuditLog Entity (Optional)
-- [ ] Create `src/auth/entities/audit-log.entity.ts`
-- [ ] Add metadata JSONB field
-- [ ] Add indexes
+- [x] Create `src/auth/entities/audit-log.entity.ts`
+- [x] Add metadata JSONB field
+- [x] Add indexes
 
 ---
 
 ## Phase 3: Enums & Types
 
 ### Permission Enum
-- [ ] Create `src/auth/enums/permission.enum.ts`
-- [ ] Add all pharmacy-specific permissions
-- [ ] Group by domain (Drug, Prescription, Inventory, etc.)
+- [x] Create `src/auth/enums/permission.enum.ts`
+- [x] Add all pharmacy-specific permissions
+- [x] Group by domain (Drug, Prescription, Inventory, etc.)
 
 ### Request Context Type
 - [ ] Create `src/auth/types/request-context.type.ts`
@@ -290,21 +290,30 @@
 - 6 tables created in operational schema
 - 3 default roles seeded
 - Migration guide reviewed and updated
+- Dependencies installed (bcrypt, cookie-session)
+- All entities created (User, AuthenticationMethod, Session, Role, UserRole, AuditLog)
+- Permission enum created
 
 ### 🔄 In Progress
-- None yet - ready to start Phase 2 (Entities)
+- Phase 4: Core Services (next)
 
 ### ⏳ Not Started
-- All implementation phases (2-10)
+- RequestContext type
+- Core services (PasswordCipher, Session, Auth)
+- Guards & Decorators
+- Controllers
+- Module setup
+- Middleware & Configuration
+- Testing
 
 ---
 
 ## Next Steps
 
-1. **Install dependencies** (bcrypt, cookie-session)
-2. **Create User entity** (start with core entity)
-3. **Create Permission enum** (define all permissions)
-4. **Create PasswordCipherService** (simple, foundational)
+1. **Create PasswordCipherService** (simple bcrypt wrapper - foundational)
+2. **Create SessionService** (session management with in-memory cache)
+3. **Create NativeAuthenticationStrategy** (email/password validation)
+4. **Create AuthService** (login/logout/register with transactions)
 
 ---
 
