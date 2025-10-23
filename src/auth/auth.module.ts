@@ -30,6 +30,7 @@ import { AuthGuard } from './guards/auth.guard';
 // Controllers
 import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
+import { RoleController } from './controllers/role.controller';
 
 @Module({
   imports: [
@@ -72,7 +73,7 @@ import { UserController } from './controllers/user.controller';
     // Guards
     AuthGuard,
   ],
-  controllers: [AuthController, UserController],
+  controllers: [AuthController, UserController, RoleController],
   exports: [AuthService, SessionService, UserService, RoleService, AuthGuard],
 })
 export class AuthModule {}
