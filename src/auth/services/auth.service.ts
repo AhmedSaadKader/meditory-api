@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Session } from '../entities/session.entity';
 import { SessionService } from './session.service';
@@ -186,6 +186,88 @@ export class AuthService {
 
       // TODO: Send email
       // await this.emailService.sendVerificationEmail(email, nativeAuth.verificationToken);
+
+      return true;
+    });
+  }
+
+  /**
+   * Request password reset (Vendure pattern)
+   * Always returns true to prevent email enumeration
+   */
+  async requestPasswordReset(email: string): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, {
+        where: { email, deletedAt: IsNull() },
+        relations: ['authenticationMethods'],
+      });
+
+      // Always return true to prevent email enumeration
+      if (!user) {
+        return true;
+      }
+
+      const nativeAuth = user.getNativeAuthenticationMethod();
+      if (!nativeAuth) {
+        return true;
+      }
+
+      // Generate reset token (32 bytes = 64 hex chars, like Vendure)
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      nativeAuth.passwordResetToken = resetToken;
+      await manager.save(nativeAuth);
+
+      // TODO: Send email with reset link
+      // await this.emailService.sendPasswordResetEmail(email, resetToken);
+
+      // For development, log the token (REMOVE IN PRODUCTION)
+      console.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
+
+      return true;
+    });
+  }
+
+  /**
+   * Reset password with token (Vendure pattern)
+   */
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      // Find auth method by reset token
+      const authMethod = await manager.findOne(NativeAuthenticationMethod, {
+        where: { passwordResetToken: token },
+        relations: ['user'],
+      });
+
+      if (!authMethod || !authMethod.user) {
+        return false; // Invalid token
+      }
+
+      // Check if user is deleted
+      if (authMethod.user.deletedAt) {
+        return false;
+      }
+
+      // Vendure uses 2-hour expiry, but we'll keep 24 hours
+      // Check token age (tokens don't have separate expiry field in our schema)
+      const tokenAge = Date.now() - authMethod.updatedAt.getTime();
+      const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+      if (tokenAge > MAX_AGE) {
+        return false; // Expired
+      }
+
+      // Hash new password
+      const passwordHash = await this.passwordCipher.hash(newPassword);
+      authMethod.passwordHash = passwordHash;
+
+      // Clear reset token (one-time use, like Vendure)
+      authMethod.passwordResetToken = null;
+
+      await manager.save(authMethod);
+
+      // Invalidate all existing sessions (Vendure does this for security)
+      await this.sessionService.deleteSessionsByUser(authMethod.user);
 
       return true;
     });

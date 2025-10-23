@@ -20,6 +20,8 @@ import { RoleService } from './services/role.service';
 
 // Strategies
 import { NativeAuthenticationStrategy } from './strategies/native-authentication.strategy';
+import { InMemorySessionCacheStrategy } from './strategies/in-memory-session-cache.strategy';
+// import { RedisSessionCacheStrategy } from './strategies/redis-session-cache.strategy'; // Uncomment for Redis
 
 // Guards
 import { AuthGuard } from './guards/auth.guard';
@@ -42,6 +44,19 @@ import { UserController } from './controllers/user.controller';
     ]),
   ],
   providers: [
+    // Session Cache Strategy (Vendure pattern - configurable)
+    {
+      provide: 'SESSION_CACHE_STRATEGY',
+      useFactory: () => {
+        // Use Redis in production if available
+        // if (process.env.REDIS_HOST) {
+        //   return new RedisSessionCacheStrategy();
+        // }
+        // Fall back to in-memory with LRU eviction
+        return new InMemorySessionCacheStrategy(10000); // Max 10k sessions
+      },
+    },
+
     // Services
     PasswordCipherService,
     SessionService,

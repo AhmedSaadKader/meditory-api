@@ -10,6 +10,7 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { AuthGuard } from '../guards/auth.guard';
 import { Allow } from '../decorators/allow.decorator';
 import { Permission } from '../enums/permission.enum';
@@ -23,6 +24,8 @@ import { NativeAuthenticationMethod } from '../entities/native-authentication-me
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+@ApiTags('Users')
+@ApiBearerAuth()
 @Controller('users')
 @UseGuards(AuthGuard)
 export class UserController {
@@ -36,6 +39,27 @@ export class UserController {
 
   @Get()
   @Allow(Permission.ReadUser)
+  @ApiOperation({
+    summary: 'Get all users',
+    description: 'Retrieve a list of all users. Requires ReadUser permission.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Users retrieved successfully',
+    schema: {
+      example: [{
+        userId: 1,
+        email: 'user@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        verified: true,
+        roles: [{ roleId: 1, code: 'pharmacist', name: 'Pharmacist' }],
+        createdAt: '2025-10-22T00:00:00.000Z'
+      }]
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   async findAll() {
     const users = await this.userService.findAll();
     return users.map((user) => ({
@@ -55,6 +79,34 @@ export class UserController {
 
   @Get(':id')
   @Allow(Permission.ReadUser)
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description: 'Retrieve detailed information about a specific user. Requires ReadUser permission.'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'User found',
+    schema: {
+      example: {
+        userId: 1,
+        email: 'user@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        verified: true,
+        roles: [{
+          roleId: 1,
+          code: 'pharmacist',
+          name: 'Pharmacist',
+          permissions: ['ReadDrug', 'CreatePrescription']
+        }],
+        createdAt: '2025-10-22T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const user = await this.userService.findById(id);
     if (!user) {
@@ -79,6 +131,27 @@ export class UserController {
 
   @Post()
   @Allow(Permission.CreateUser)
+  @ApiOperation({
+    summary: 'Create new user',
+    description: 'Create a new user account (admin operation). Requires CreateUser permission.'
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'User created successfully',
+    schema: {
+      example: {
+        success: true,
+        user: {
+          userId: 2,
+          email: 'newuser@example.com',
+          verified: false
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   async create(@Body() createUserDto: CreateUserDto) {
     // Create user
     const user = await this.userService.create({
@@ -111,6 +184,31 @@ export class UserController {
 
   @Patch(':id')
   @Allow(Permission.UpdateUser)
+  @ApiOperation({
+    summary: 'Update user',
+    description: 'Update user information. Requires UpdateUser permission.'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    schema: {
+      example: {
+        success: true,
+        user: {
+          userId: 1,
+          email: 'user@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          verified: true
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
@@ -134,6 +232,24 @@ export class UserController {
 
   @Delete(':id')
   @Allow(Permission.DeleteUser)
+  @ApiOperation({
+    summary: 'Delete user',
+    description: 'Soft delete a user account. Requires DeleteUser permission.'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'User deleted successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'User deleted successfully'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.userService.softDelete(id);
     return {
@@ -144,6 +260,24 @@ export class UserController {
 
   @Post(':id/roles')
   @Allow(Permission.ManageRoles)
+  @ApiOperation({
+    summary: 'Assign role to user',
+    description: 'Assign a role to a user. Requires ManageRoles permission.'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiResponse({
+    status: 201,
+    description: 'Role assigned successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Role assigned successfully'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User or role not found' })
   async assignRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() assignRoleDto: AssignRoleDto,
@@ -173,6 +307,25 @@ export class UserController {
 
   @Delete(':id/roles/:roleId')
   @Allow(Permission.ManageRoles)
+  @ApiOperation({
+    summary: 'Remove role from user',
+    description: 'Remove a role assignment from a user. Requires ManageRoles permission.'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiParam({ name: 'roleId', description: 'Role ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'Role removed successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Role removed successfully'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async removeRole(
     @Param('id', ParseIntPipe) id: number,
     @Param('roleId', ParseIntPipe) roleId: number,

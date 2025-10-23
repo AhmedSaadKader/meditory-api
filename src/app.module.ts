@@ -29,11 +29,6 @@ import { AuditLog } from './auth/entities/audit-log.entity';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        console.log('DB_HOST:', configService.get<string>('DB_HOST'));
-        console.log('DB_PORT:', configService.get<string>('DB_PORT'));
-        console.log('DB_USERNAME:', configService.get<string>('DB_USERNAME'));
-        console.log('DB_DATABASE:', configService.get<string>('DB_DATABASE'));
-
         const useSSL = configService.get<string>('DB_SSL') === 'true';
 
         const config: TypeOrmModuleOptions = {
