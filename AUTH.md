@@ -38,6 +38,24 @@ Session-based authentication with email/password, role-based access control (RBA
 - `technician` - Technician role
 
 ## Configuration
+
+### Required Environment Variables
+```bash
+# Email (SMTP) - Required for email verification and password reset
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=noreply@meditory.com
+APP_URL=http://localhost:3000
+```
+
+### Email Setup (Gmail Example)
+1. Enable 2FA on your Gmail account
+2. Generate an App Password: https://myaccount.google.com/apppasswords
+3. Use the app password in `SMTP_PASS`
+
+### Settings
 - Session expiry: 30 days
 - Token expiry: 24 hours
 - Password hash rounds: 12

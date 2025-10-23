@@ -26,6 +26,7 @@
     "deploy": "npm run build && npm run migration:run && npm run start:prod"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -40,6 +41,7 @@
     "class-validator": "^0.14.2",
     "cookie-session": "^2.1.1",
     "nestjs-paginate": "^12.8.3",
+    "nodemailer": "^7.0.10",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -55,6 +57,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^7.0.2",
     "@types/supertest": "^6.0.3",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

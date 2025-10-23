@@ -4,6 +4,7 @@ import { Repository, DataSource, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Session } from '../entities/session.entity';
 import { SessionService } from './session.service';
+import { EmailService } from './email.service';
 import { NativeAuthenticationStrategy } from '../strategies/native-authentication.strategy';
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { PasswordCipherService } from './password-cipher.service';
@@ -16,6 +17,7 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private sessionService: SessionService,
+    private emailService: EmailService,
     private nativeAuthStrategy: NativeAuthenticationStrategy,
     private passwordCipher: PasswordCipherService,
     private dataSource: DataSource,
@@ -120,8 +122,8 @@ export class AuthService {
         await manager.save(user);
       }
 
-      // TODO: Send verification email (implement email service)
-      // this.emailService.sendVerificationEmail(email, verificationToken);
+      // Send verification email
+      await this.emailService.sendVerificationEmail(email, verificationToken);
 
       return user;
     });
@@ -184,8 +186,8 @@ export class AuthService {
       nativeAuth.verificationToken = crypto.randomBytes(32).toString('hex');
       await manager.save(nativeAuth);
 
-      // TODO: Send email
-      // await this.emailService.sendVerificationEmail(email, nativeAuth.verificationToken);
+      // Send verification email
+      await this.emailService.sendVerificationEmail(email, nativeAuth.verificationToken);
 
       return true;
     });
@@ -219,11 +221,8 @@ export class AuthService {
       nativeAuth.passwordResetToken = resetToken;
       await manager.save(nativeAuth);
 
-      // TODO: Send email with reset link
-      // await this.emailService.sendPasswordResetEmail(email, resetToken);
-
-      // For development, log the token (REMOVE IN PRODUCTION)
-      console.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
+      // Send password reset email
+      await this.emailService.sendPasswordResetEmail(email, resetToken);
 
       return true;
     });
