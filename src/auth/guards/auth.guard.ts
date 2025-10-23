@@ -6,11 +6,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { SessionService } from '../services/session.service';
 import { RequestContext } from '../types/request-context';
 import { Permission } from '../enums/permission.enum';
 import { PERMISSIONS_METADATA_KEY } from '../decorators/allow.decorator';
-import { REQUEST_CONTEXT_KEY } from '../decorators/ctx.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class AuthGuard implements CanActivate {
     if (isPublic) {
       // Still create an empty context for public routes
       const request = this.getRequest(context);
-      request[REQUEST_CONTEXT_KEY] = RequestContext.empty();
+      request.__request_context__ = RequestContext.empty();
       return true;
     }
 
@@ -47,7 +47,7 @@ export class AuthGuard implements CanActivate {
     const sessionToken = this.extractSessionToken(request);
 
     // 5. Get session if token exists
-    let session = sessionToken
+    const session = sessionToken
       ? await this.sessionService.getSessionFromToken(sessionToken)
       : undefined;
 
@@ -65,7 +65,7 @@ export class AuthGuard implements CanActivate {
     );
 
     // 8. Store RequestContext on request object
-    request[REQUEST_CONTEXT_KEY] = requestContext;
+    request.__request_context__ = requestContext;
 
     // 9. Check permissions
     if (!permissions || permissions.length === 0) {
@@ -104,15 +104,15 @@ export class AuthGuard implements CanActivate {
   /**
    * Extract request object from execution context
    */
-  private getRequest(context: ExecutionContext): any {
+  private getRequest(context: ExecutionContext): Request {
     // For REST APIs only
-    return context.switchToHttp().getRequest();
+    return context.switchToHttp().getRequest<Request>();
   }
 
   /**
    * Extract session token from cookie or Authorization header
    */
-  private extractSessionToken(request: any): string | undefined {
+  private extractSessionToken(request: Request): string | undefined {
     // Try cookie first (session middleware)
     if (request.session?.token) {
       return request.session.token;
@@ -120,7 +120,7 @@ export class AuthGuard implements CanActivate {
 
     // Try Authorization header (Bearer token)
     const authHeader = request.headers?.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
 

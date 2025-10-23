@@ -19,7 +19,9 @@ export async function createTestApp(): Promise<INestApplication> {
   app.use(
     cookieSession({
       name: 'session',
-      keys: [process.env.SESSION_SECRET || 'dev-secret-key-change-in-production'],
+      keys: [
+        process.env.SESSION_SECRET || 'dev-secret-key-change-in-production',
+      ],
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       httpOnly: true,
       secure: false, // false for testing
@@ -50,7 +52,9 @@ export async function cleanDatabase(app: INestApplication): Promise<void> {
 
   for (const entity of entities) {
     const repository = dataSource.getRepository(entity.name);
-    await repository.query(`TRUNCATE TABLE ${entity.schema}.${entity.tableName} RESTART IDENTITY CASCADE;`);
+    await repository.query(
+      `TRUNCATE TABLE ${entity.schema}.${entity.tableName} RESTART IDENTITY CASCADE;`,
+    );
   }
 }
 
@@ -74,7 +78,10 @@ export async function seedDatabase(app: INestApplication): Promise<void> {
 /**
  * Extract cookies from response headers
  */
-export function extractCookie(response: any, cookieName: string = 'session'): string | null {
+export function extractCookie(
+  response: any,
+  cookieName: string = 'session',
+): string | null {
   const cookies = response.headers['set-cookie'];
   if (!cookies) return null;
 
@@ -88,5 +95,5 @@ export function extractCookie(response: any, cookieName: string = 'session'): st
  * Helper to wait for async operations
  */
 export function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

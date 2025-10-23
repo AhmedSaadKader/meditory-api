@@ -163,9 +163,7 @@ export class MoveExistingTablesToReference1734000000001
     `);
 
     if (drugsExists[0].exists) {
-      await queryRunner.query(
-        `ALTER TABLE reference.drugs SET SCHEMA public`,
-      );
+      await queryRunner.query(`ALTER TABLE reference.drugs SET SCHEMA public`);
     }
 
     const dosageFormsExists = await queryRunner.query(`
@@ -191,9 +189,7 @@ export class MoveExistingTablesToReference1734000000001
     `);
 
     if (routesExists[0].exists) {
-      await queryRunner.query(
-        `ALTER TABLE reference.routes SET SCHEMA public`,
-      );
+      await queryRunner.query(`ALTER TABLE reference.routes SET SCHEMA public`);
     }
 
     // Move other tables back

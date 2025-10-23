@@ -12,7 +12,12 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from '../services/auth.service';
 import { AuthGuard } from '../guards/auth.guard';
@@ -38,7 +43,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Login',
-    description: 'Authenticate user with email and password. Returns user data and session token.'
+    description:
+      'Authenticate user with email and password. Returns user data and session token.',
   })
   @ApiResponse({
     status: 200,
@@ -50,16 +56,16 @@ export class AuthController {
         user: {
           userId: 1,
           email: 'user@example.com',
-          verified: true
-        }
-      }
-    }
+          verified: true,
+        },
+      },
+    },
   })
-  @ApiResponse({ status: 401, description: 'Invalid credentials or email not verified' })
-  async login(
-    @Body() loginDto: LoginDto,
-    @Req() req: Request,
-  ) {
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials or email not verified',
+  })
+  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     const result = await this.authService.authenticate(
       loginDto.email,
       loginDto.password,
@@ -93,16 +99,16 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Logout',
-    description: 'Invalidate current session and clear session cookie'
+    description: 'Invalidate current session and clear session cookie',
   })
   @ApiResponse({
     status: 200,
     description: 'Logout successful',
     schema: {
       example: {
-        success: true
-      }
-    }
+        success: true,
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   async logout(@Req() req: Request) {
@@ -125,7 +131,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get current user',
-    description: 'Get authenticated user information'
+    description: 'Get authenticated user information',
   })
   @ApiResponse({
     status: 200,
@@ -135,12 +141,12 @@ export class AuthController {
         userId: 1,
         email: 'user@example.com',
         verified: true,
-        permissions: ['Authenticated']
-      }
-    }
+        permissions: ['Authenticated'],
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  async me(@Ctx() ctx: RequestContext) {
+  me(@Ctx() ctx: RequestContext) {
     if (!ctx.user) {
       throw new UnauthorizedException();
     }
@@ -157,7 +163,8 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Register new user',
-    description: 'Create a new user account. Email verification required before login.'
+    description:
+      'Create a new user account. Email verification required before login.',
   })
   @ApiResponse({
     status: 201,
@@ -165,14 +172,15 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message: 'Registration successful. Please check your email to verify your account.',
+        message:
+          'Registration successful. Please check your email to verify your account.',
         user: {
           userId: 1,
           email: 'newuser@example.com',
-          verified: false
-        }
-      }
-    }
+          verified: false,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
@@ -187,16 +195,22 @@ export class AuthController {
 
       return {
         success: true,
-        message: 'Registration successful. Please check your email to verify your account.',
+        message:
+          'Registration successful. Please check your email to verify your account.',
         user: {
           userId: user.userId,
           email: user.email,
           verified: user.verified,
         },
       };
-    } catch (error) {
-      // Check if it's a duplicate email error
-      if (error.code === '23505' || error.message?.includes('duplicate')) {
+    } catch (error: unknown) {
+      // Check if it's a duplicate email error (PostgreSQL unique violation)
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
         throw new ConflictException('Email already registered');
       }
       throw error;
@@ -207,7 +221,8 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Verify email',
-    description: 'Verify user email address with verification token sent via email'
+    description:
+      'Verify user email address with verification token sent via email',
   })
   @ApiResponse({
     status: 200,
@@ -215,9 +230,9 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message: 'Email verified successfully. You can now log in.'
-      }
-    }
+        message: 'Email verified successfully. You can now log in.',
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async verifyEmail(@Query('token') token: string) {
@@ -241,7 +256,7 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Resend verification email',
-    description: 'Request a new verification email for unverified accounts'
+    description: 'Request a new verification email for unverified accounts',
   })
   @ApiResponse({
     status: 201,
@@ -249,11 +264,14 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message: 'Verification email sent.'
-      }
-    }
+        message: 'Verification email sent.',
+      },
+    },
   })
-  @ApiResponse({ status: 400, description: 'Invalid email or already verified' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email or already verified',
+  })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     const result = await this.authService.resendVerificationEmail(dto.email);
 
@@ -271,7 +289,8 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Request password reset',
-    description: 'Request a password reset email. Always returns success to prevent email enumeration.'
+    description:
+      'Request a password reset email. Always returns success to prevent email enumeration.',
   })
   @ApiResponse({
     status: 201,
@@ -279,9 +298,10 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.'
-      }
-    }
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid email format' })
   async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
@@ -290,7 +310,8 @@ export class AuthController {
 
     return {
       success: true,
-      message: 'If an account with that email exists, a password reset link has been sent.',
+      message:
+        'If an account with that email exists, a password reset link has been sent.',
     };
   }
 
@@ -299,7 +320,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reset password',
-    description: 'Reset password using token from password reset email. Invalidates all existing sessions.'
+    description:
+      'Reset password using token from password reset email. Invalidates all existing sessions.',
   })
   @ApiResponse({
     status: 200,
@@ -307,13 +329,17 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message: 'Password has been reset successfully. Please log in with your new password.'
-      }
-    }
+        message:
+          'Password has been reset successfully. Please log in with your new password.',
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid or expired reset token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    const result = await this.authService.resetPassword(dto.token, dto.password);
+    const result = await this.authService.resetPassword(
+      dto.token,
+      dto.password,
+    );
 
     if (!result) {
       throw new BadRequestException('Invalid or expired reset token');
@@ -321,7 +347,8 @@ export class AuthController {
 
     return {
       success: true,
-      message: 'Password has been reset successfully. Please log in with your new password.',
+      message:
+        'Password has been reset successfully. Please log in with your new password.',
     };
   }
 }

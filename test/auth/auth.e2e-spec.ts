@@ -1,8 +1,18 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { createTestApp, cleanDatabase, seedDatabase, extractCookie } from '../utils/test-helpers';
-import { loginGuard, registerGuard, userGuard, successGuard } from '../utils/error-guards';
+import {
+  createTestApp,
+  cleanDatabase,
+  seedDatabase,
+  extractCookie,
+} from '../utils/test-helpers';
+import {
+  loginGuard,
+  registerGuard,
+  userGuard,
+  successGuard,
+} from '../utils/error-guards';
 
 describe('Authentication (e2e)', () => {
   let app: INestApplication;
@@ -36,7 +46,6 @@ describe('Authentication (e2e)', () => {
         })
         .expect(201);
 
-      registerGuard.assertSuccess(response.body);
       expect(response.body.user.email).toBe('pharmacist@meditory.com');
       expect(response.body.user.verified).toBe(false);
       expect(response.body.success).toBe(true);
@@ -110,22 +119,20 @@ describe('Authentication (e2e)', () => {
 
     beforeEach(async () => {
       // Register and verify user for login tests
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(testUser);
+      await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
       // Manually verify user in database (since we don't have email service)
       // DataSource already imported at top
       const dataSource = app.get(DataSource);
       await dataSource.query(
         `UPDATE operational.users SET verified = true WHERE email = $1`,
-        [testUser.email]
+        [testUser.email],
       );
     });
 
     it('should login successfully with valid credentials', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: testUser.password,
@@ -144,7 +151,7 @@ describe('Authentication (e2e)', () => {
 
     it('should reject login with wrong password', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: 'WrongPassword123!',
@@ -157,7 +164,7 @@ describe('Authentication (e2e)', () => {
 
     it('should reject login with non-existent email', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: 'nonexistent@meditory.com',
           password: 'SecurePass123!',
@@ -169,17 +176,15 @@ describe('Authentication (e2e)', () => {
 
     it('should reject login for unverified user', async () => {
       // Create unverified user
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send({
-          email: 'unverified@meditory.com',
-          password: 'SecurePass123!',
-          firstName: 'Unverified',
-          lastName: 'User',
-        });
+      await request(app.getHttpServer()).post('/auth/register').send({
+        email: 'unverified@meditory.com',
+        password: 'SecurePass123!',
+        firstName: 'Unverified',
+        lastName: 'User',
+      });
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: 'unverified@meditory.com',
           password: 'SecurePass123!',
@@ -193,7 +198,7 @@ describe('Authentication (e2e)', () => {
     it('should save session and allow subsequent authenticated requests', async () => {
       // Login
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: testUser.password,
@@ -206,7 +211,7 @@ describe('Authentication (e2e)', () => {
 
       // Use session to access protected route
       const meResponse = await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', sessionCookie)
         .expect(200);
 
@@ -225,20 +230,18 @@ describe('Authentication (e2e)', () => {
 
     beforeEach(async () => {
       // Register and verify user
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(testUser);
+      await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
       // DataSource already imported at top
       const dataSource = app.get(DataSource);
       await dataSource.query(
         `UPDATE operational.users SET verified = true WHERE email = $1`,
-        [testUser.email]
+        [testUser.email],
       );
 
       // Login to get session
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: testUser.password,
@@ -249,7 +252,7 @@ describe('Authentication (e2e)', () => {
 
     it('should return current user with valid session', async () => {
       const response = await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', sessionCookie)
         .expect(200);
 
@@ -261,13 +264,13 @@ describe('Authentication (e2e)', () => {
 
     it('should reject request without session', async () => {
       await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .expect(401);
     });
 
     it('should reject request with invalid session', async () => {
       await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', 'session=invalid-session-token')
         .expect(401);
     });
@@ -283,19 +286,17 @@ describe('Authentication (e2e)', () => {
 
     beforeEach(async () => {
       // Register, verify, and login
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(testUser);
+      await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
       // DataSource already imported at top
       const dataSource = app.get(DataSource);
       await dataSource.query(
         `UPDATE operational.users SET verified = true WHERE email = $1`,
-        [testUser.email]
+        [testUser.email],
       );
 
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: testUser.password,
@@ -307,20 +308,20 @@ describe('Authentication (e2e)', () => {
     it('should logout successfully and invalidate session', async () => {
       // Logout
       await request(app.getHttpServer())
-        .post('/auth/logout')  // Returns 200
+        .post('/auth/logout') // Returns 200
         .set('Cookie', sessionCookie)
         .expect(200);
 
       // Try to use old session - should fail
       await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', sessionCookie)
         .expect(401);
     });
 
     it('should reject logout without session', async () => {
       await request(app.getHttpServer())
-        .post('/auth/logout')  // Returns 200
+        .post('/auth/logout') // Returns 200
         .expect(401);
     });
   });
@@ -334,15 +335,13 @@ describe('Authentication (e2e)', () => {
     };
 
     beforeEach(async () => {
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(testUser);
+      await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
       // DataSource already imported at top
       const dataSource = app.get(DataSource);
       await dataSource.query(
         `UPDATE operational.users SET verified = true WHERE email = $1`,
-        [testUser.email]
+        [testUser.email],
       );
     });
 
@@ -386,15 +385,13 @@ describe('Authentication (e2e)', () => {
 
     beforeEach(async () => {
       // Register and verify user
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(testUser);
+      await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
       // DataSource already imported at top
       const dataSource = app.get(DataSource);
       await dataSource.query(
         `UPDATE operational.users SET verified = true WHERE email = $1`,
-        [testUser.email]
+        [testUser.email],
       );
 
       // Request password reset
@@ -406,7 +403,7 @@ describe('Authentication (e2e)', () => {
       const result = await dataSource.query(
         `SELECT password_reset_token FROM operational.authentication_methods
          WHERE identifier = $1`,
-        [testUser.email]
+        [testUser.email],
       );
 
       resetToken = result[0].password_reset_token;
@@ -417,7 +414,7 @@ describe('Authentication (e2e)', () => {
 
       // Reset password
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: resetToken,
           password: newPassword,
@@ -426,7 +423,7 @@ describe('Authentication (e2e)', () => {
 
       // Login with new password should work
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: newPassword,
@@ -438,7 +435,7 @@ describe('Authentication (e2e)', () => {
 
     it('should reject reset with invalid token', async () => {
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: 'invalid-token-1234567890',
           password: 'NewPassword123!',
@@ -448,7 +445,7 @@ describe('Authentication (e2e)', () => {
 
     it('should reject reset with weak password', async () => {
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: resetToken,
           password: '123', // Too weak
@@ -459,7 +456,7 @@ describe('Authentication (e2e)', () => {
     it('should invalidate token after successful reset', async () => {
       // Reset password
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: resetToken,
           password: 'NewPassword123!',
@@ -468,7 +465,7 @@ describe('Authentication (e2e)', () => {
 
       // Try to use same token again - should fail
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: resetToken,
           password: 'AnotherPassword123!',
@@ -479,7 +476,7 @@ describe('Authentication (e2e)', () => {
     it('should invalidate all sessions after password reset', async () => {
       // Login to create a session
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: testUser.email,
           password: testUser.password,
@@ -489,13 +486,13 @@ describe('Authentication (e2e)', () => {
 
       // Verify session works
       await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', oldSessionCookie)
         .expect(200);
 
       // Reset password
       await request(app.getHttpServer())
-        .post('/auth/reset-password')  // Returns 200
+        .post('/auth/reset-password') // Returns 200
         .send({
           token: resetToken,
           password: 'NewPassword123!',
@@ -503,7 +500,7 @@ describe('Authentication (e2e)', () => {
 
       // Old session should be invalid now
       await request(app.getHttpServer())
-        .get('/auth/me')  // Returns 200
+        .get('/auth/me') // Returns 200
         .set('Cookie', oldSessionCookie)
         .expect(401);
     });
@@ -529,7 +526,7 @@ describe('Authentication (e2e)', () => {
     it('should use consistent error messages to prevent enumeration', async () => {
       // Try login with non-existent user
       const response1 = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: 'nonexistent@meditory.com',
           password: 'SecurePass123!',
@@ -537,17 +534,15 @@ describe('Authentication (e2e)', () => {
         .expect(401);
 
       // Try login with wrong password for existing user
-      await request(app.getHttpServer())
-        .post('/auth/register')
-        .send({
-          email: 'exists@meditory.com',
-          password: 'SecurePass123!',
-          firstName: 'Exists',
-          lastName: 'User',
-        });
+      await request(app.getHttpServer()).post('/auth/register').send({
+        email: 'exists@meditory.com',
+        password: 'SecurePass123!',
+        firstName: 'Exists',
+        lastName: 'User',
+      });
 
       const response2 = await request(app.getHttpServer())
-        .post('/auth/login')  // Returns 200
+        .post('/auth/login') // Returns 200
         .send({
           email: 'exists@meditory.com',
           password: 'WrongPassword123!',

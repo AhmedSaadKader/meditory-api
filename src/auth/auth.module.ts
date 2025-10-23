@@ -71,12 +71,6 @@ import { UserController } from './controllers/user.controller';
     AuthGuard,
   ],
   controllers: [AuthController, UserController],
-  exports: [
-    AuthService,
-    SessionService,
-    UserService,
-    RoleService,
-    AuthGuard,
-  ],
+  exports: [AuthService, SessionService, UserService, RoleService, AuthGuard],
 })
 export class AuthModule {}

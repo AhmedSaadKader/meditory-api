@@ -36,7 +36,8 @@ export class DrugsController {
     name: 'include_ingredients',
     required: false,
     type: Boolean,
-    description: 'Include standardized ingredients in response (default: false)',
+    description:
+      'Include standardized ingredients in response (default: false)',
     example: false,
   })
   findAll(

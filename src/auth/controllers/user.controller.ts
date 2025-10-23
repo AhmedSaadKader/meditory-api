@@ -10,7 +10,13 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { AuthGuard } from '../guards/auth.guard';
 import { Allow } from '../decorators/allow.decorator';
 import { Permission } from '../enums/permission.enum';
@@ -41,22 +47,24 @@ export class UserController {
   @Allow(Permission.ReadUser)
   @ApiOperation({
     summary: 'Get all users',
-    description: 'Retrieve a list of all users. Requires ReadUser permission.'
+    description: 'Retrieve a list of all users. Requires ReadUser permission.',
   })
   @ApiResponse({
     status: 200,
     description: 'Users retrieved successfully',
     schema: {
-      example: [{
-        userId: 1,
-        email: 'user@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-        verified: true,
-        roles: [{ roleId: 1, code: 'pharmacist', name: 'Pharmacist' }],
-        createdAt: '2025-10-22T00:00:00.000Z'
-      }]
-    }
+      example: [
+        {
+          userId: 1,
+          email: 'user@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          verified: true,
+          roles: [{ roleId: 1, code: 'pharmacist', name: 'Pharmacist' }],
+          createdAt: '2025-10-22T00:00:00.000Z',
+        },
+      ],
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
@@ -81,7 +89,8 @@ export class UserController {
   @Allow(Permission.ReadUser)
   @ApiOperation({
     summary: 'Get user by ID',
-    description: 'Retrieve detailed information about a specific user. Requires ReadUser permission.'
+    description:
+      'Retrieve detailed information about a specific user. Requires ReadUser permission.',
   })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiResponse({
@@ -94,15 +103,17 @@ export class UserController {
         firstName: 'John',
         lastName: 'Doe',
         verified: true,
-        roles: [{
-          roleId: 1,
-          code: 'pharmacist',
-          name: 'Pharmacist',
-          permissions: ['ReadDrug', 'CreatePrescription']
-        }],
-        createdAt: '2025-10-22T00:00:00.000Z'
-      }
-    }
+        roles: [
+          {
+            roleId: 1,
+            code: 'pharmacist',
+            name: 'Pharmacist',
+            permissions: ['ReadDrug', 'CreatePrescription'],
+          },
+        ],
+        createdAt: '2025-10-22T00:00:00.000Z',
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
@@ -133,7 +144,8 @@ export class UserController {
   @Allow(Permission.CreateUser)
   @ApiOperation({
     summary: 'Create new user',
-    description: 'Create a new user account (admin operation). Requires CreateUser permission.'
+    description:
+      'Create a new user account (admin operation). Requires CreateUser permission.',
   })
   @ApiResponse({
     status: 201,
@@ -144,10 +156,10 @@ export class UserController {
         user: {
           userId: 2,
           email: 'newuser@example.com',
-          verified: false
-        }
-      }
-    }
+          verified: false,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
@@ -186,7 +198,7 @@ export class UserController {
   @Allow(Permission.UpdateUser)
   @ApiOperation({
     summary: 'Update user',
-    description: 'Update user information. Requires UpdateUser permission.'
+    description: 'Update user information. Requires UpdateUser permission.',
   })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiResponse({
@@ -200,10 +212,10 @@ export class UserController {
           email: 'user@example.com',
           firstName: 'John',
           lastName: 'Doe',
-          verified: true
-        }
-      }
-    }
+          verified: true,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
@@ -234,7 +246,7 @@ export class UserController {
   @Allow(Permission.DeleteUser)
   @ApiOperation({
     summary: 'Delete user',
-    description: 'Soft delete a user account. Requires DeleteUser permission.'
+    description: 'Soft delete a user account. Requires DeleteUser permission.',
   })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiResponse({
@@ -243,9 +255,9 @@ export class UserController {
     schema: {
       example: {
         success: true,
-        message: 'User deleted successfully'
-      }
-    }
+        message: 'User deleted successfully',
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
@@ -262,7 +274,7 @@ export class UserController {
   @Allow(Permission.ManageRoles)
   @ApiOperation({
     summary: 'Assign role to user',
-    description: 'Assign a role to a user. Requires ManageRoles permission.'
+    description: 'Assign a role to a user. Requires ManageRoles permission.',
   })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiResponse({
@@ -271,9 +283,9 @@ export class UserController {
     schema: {
       example: {
         success: true,
-        message: 'Role assigned successfully'
-      }
-    }
+        message: 'Role assigned successfully',
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
@@ -309,7 +321,8 @@ export class UserController {
   @Allow(Permission.ManageRoles)
   @ApiOperation({
     summary: 'Remove role from user',
-    description: 'Remove a role assignment from a user. Requires ManageRoles permission.'
+    description:
+      'Remove a role assignment from a user. Requires ManageRoles permission.',
   })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiParam({ name: 'roleId', description: 'Role ID', type: Number })
@@ -319,9 +332,9 @@ export class UserController {
     schema: {
       example: {
         success: true,
-        message: 'Role removed successfully'
-      }
-    }
+        message: 'Role removed successfully',
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })

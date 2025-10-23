@@ -25,9 +25,7 @@ export class NativeAuthenticationStrategy
     private passwordCipher: PasswordCipherService,
   ) {}
 
-  async authenticate(
-    data: NativeAuthenticationData,
-  ): Promise<User | false> {
+  async authenticate(data: NativeAuthenticationData): Promise<User | false> {
     // 1. Find user by email (must not be deleted)
     const user = await this.userRepository.findOne({
       where: { email: data.username, deletedAt: IsNull() },
@@ -70,10 +68,7 @@ export class NativeAuthenticationStrategy
   /**
    * Verify password for a specific user
    */
-  async verifyUserPassword(
-    userId: number,
-    password: string,
-  ): Promise<boolean> {
+  async verifyUserPassword(userId: number, password: string): Promise<boolean> {
     const user = await this.userRepository.findOne({
       where: { userId, deletedAt: IsNull() },
       relations: ['authenticationMethods'],

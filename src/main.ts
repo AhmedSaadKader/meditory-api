@@ -33,7 +33,9 @@ async function bootstrap() {
   // Swagger API Documentation
   const config = new DocumentBuilder()
     .setTitle('Meditory Pharmacy ERP API')
-    .setDescription('Pharmacy ERP System Backend API with Vendure-inspired authentication')
+    .setDescription(
+      'Pharmacy ERP System Backend API with Vendure-inspired authentication',
+    )
     .setVersion('1.0.0')
     .addBearerAuth({
       type: 'http',

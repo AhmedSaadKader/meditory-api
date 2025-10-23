@@ -214,7 +214,7 @@ export class AuthService {
 
       // Generate reset token (32 bytes = 64 hex chars, like Vendure)
       const resetToken = crypto.randomBytes(32).toString('hex');
-      const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      // Reset expiry: 24 hours (stored in token expiry field if needed in future)
 
       nativeAuth.passwordResetToken = resetToken;
       await manager.save(nativeAuth);

@@ -42,7 +42,7 @@ export class MockEmailService {
    */
   getLastEmail(type?: 'verification' | 'passwordReset'): CapturedEmail | null {
     const emails = type
-      ? this.sentEmails.filter(e => e.type === type)
+      ? this.sentEmails.filter((e) => e.type === type)
       : this.sentEmails;
 
     return emails.length > 0 ? emails[emails.length - 1] : null;
@@ -52,7 +52,7 @@ export class MockEmailService {
    * Get all emails sent to a specific address
    */
   getEmailsSentTo(email: string): CapturedEmail[] {
-    return this.sentEmails.filter(e => e.to === email);
+    return this.sentEmails.filter((e) => e.to === email);
   }
 
   /**
@@ -66,15 +66,18 @@ export class MockEmailService {
   /**
    * Check if any email was sent
    */
-  wasEmailSent(email?: string, type?: 'verification' | 'passwordReset'): boolean {
+  wasEmailSent(
+    email?: string,
+    type?: 'verification' | 'passwordReset',
+  ): boolean {
     let filtered = this.sentEmails;
 
     if (email) {
-      filtered = filtered.filter(e => e.to === email);
+      filtered = filtered.filter((e) => e.to === email);
     }
 
     if (type) {
-      filtered = filtered.filter(e => e.type === type);
+      filtered = filtered.filter((e) => e.type === type);
     }
 
     return filtered.length > 0;

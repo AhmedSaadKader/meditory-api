@@ -1,6 +1,6 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Session } from '../entities/session.entity';
 import { User } from '../entities/user.entity';
 import type { SessionCacheStrategy } from '../strategies/session-cache-strategy.interface';
@@ -38,7 +38,9 @@ export class SessionService {
       this.cacheStrategy = cacheStrategy;
     } else {
       // Fallback: create in-memory strategy
-      const { InMemorySessionCacheStrategy } = require('../strategies/in-memory-session-cache.strategy');
+      const {
+        InMemorySessionCacheStrategy,
+      } = require('../strategies/in-memory-session-cache.strategy');
       this.cacheStrategy = new InMemorySessionCacheStrategy();
     }
   }

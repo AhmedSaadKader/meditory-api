@@ -1,10 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class UpdateDatabaseFunctionsWithSchema1760274736353 implements MigrationInterface {
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Update find_drugs_hierarchical function with schema prefixes
-        await queryRunner.query(`
+export class UpdateDatabaseFunctionsWithSchema1760274736353
+  implements MigrationInterface
+{
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Update find_drugs_hierarchical function with schema prefixes
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_hierarchical(search_term text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text)
             LANGUAGE plpgsql
@@ -70,8 +71,8 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             $function$
         `);
 
-        // Update find_drugs_unified function with schema prefixes
-        await queryRunner.query(`
+    // Update find_drugs_unified function with schema prefixes
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_unified(search_term text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text)
             LANGUAGE plpgsql
@@ -165,8 +166,8 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             $function$
         `);
 
-        // Update find_drugs_advanced function with schema prefixes
-        await queryRunner.query(`
+    // Update find_drugs_advanced function with schema prefixes
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_advanced(drug_name_filter text DEFAULT NULL::text, ingredient_filter text DEFAULT NULL::text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text, priority integer)
             LANGUAGE plpgsql
@@ -245,11 +246,11 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             END;
             $function$
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Revert find_drugs_hierarchical to use tables without schema prefix
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Revert find_drugs_hierarchical to use tables without schema prefix
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_hierarchical(search_term text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text)
             LANGUAGE plpgsql
@@ -312,8 +313,8 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             $function$
         `);
 
-        // Similar revert for find_drugs_unified
-        await queryRunner.query(`
+    // Similar revert for find_drugs_unified
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_unified(search_term text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text)
             LANGUAGE plpgsql
@@ -402,8 +403,8 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             $function$
         `);
 
-        // Similar revert for find_drugs_advanced
-        await queryRunner.query(`
+    // Similar revert for find_drugs_advanced
+    await queryRunner.query(`
             CREATE OR REPLACE FUNCTION public.find_drugs_advanced(drug_name_filter text DEFAULT NULL::text, ingredient_filter text DEFAULT NULL::text)
             RETURNS TABLE(drug_name text, company text, price numeric, group_name text, standard_term text, match_type text, priority integer)
             LANGUAGE plpgsql
@@ -476,6 +477,5 @@ export class UpdateDatabaseFunctionsWithSchema1760274736353 implements Migration
             END;
             $function$
         `);
-    }
-
+  }
 }

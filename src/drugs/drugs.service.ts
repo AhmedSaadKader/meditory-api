@@ -20,8 +20,15 @@ export class DrugsService {
     return this.drugsRepository.save(drug);
   }
 
-  async findAll(query: PaginateQuery, includeIngredients = false): Promise<Paginated<Drug>> {
-    const result = await paginate(query, this.drugsRepository, DRUG_PAGINATION_CONFIG);
+  async findAll(
+    query: PaginateQuery,
+    includeIngredients = false,
+  ): Promise<Paginated<Drug>> {
+    const result = await paginate(
+      query,
+      this.drugsRepository,
+      DRUG_PAGINATION_CONFIG,
+    );
 
     // Optionally enrich with ingredients
     if (includeIngredients) {

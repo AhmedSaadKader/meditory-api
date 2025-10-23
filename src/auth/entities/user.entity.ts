@@ -79,9 +79,7 @@ export class User {
     this.deletedAt = null;
   }
 
-  getNativeAuthenticationMethod():
-    | NativeAuthenticationMethod
-    | undefined {
+  getNativeAuthenticationMethod(): NativeAuthenticationMethod | undefined {
     return this.authenticationMethods?.find(
       (m) => m.type === 'native',
     ) as NativeAuthenticationMethod;
