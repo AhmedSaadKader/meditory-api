@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
 @Injectable()
 export class EmailService {
-  private transporter: Transporter;
+  private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter | null = null;
   private fromEmail: string;
   private appUrl: string;
+  private emailEnabled: boolean = false;
 
   constructor(private configService: ConfigService) {
     const host = this.configService.get<string>('SMTP_HOST');
@@ -15,32 +17,59 @@ export class EmailService {
     const user = this.configService.get<string>('SMTP_USER');
     const pass = this.configService.get<string>('SMTP_PASS');
 
-    this.fromEmail = this.configService.get<string>('SMTP_FROM', 'noreply@meditory.com');
-    this.appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+    this.fromEmail = this.configService.get<string>(
+      'SMTP_FROM',
+      'noreply@meditory.com',
+    );
+    this.appUrl = this.configService.get<string>(
+      'APP_URL',
+      'http://localhost:3000',
+    );
+
+    // Check if SMTP is configured
+    if (!host || !user || !pass) {
+      this.logger.warn(
+        'SMTP credentials not fully configured. Email sending disabled.',
+      );
+      this.logger.warn(`SMTP_HOST: ${host ? 'configured' : 'MISSING'}`);
+      this.logger.warn(`SMTP_USER: ${user ? 'configured' : 'MISSING'}`);
+      this.logger.warn(`SMTP_PASS: ${pass ? 'configured' : 'MISSING'}`);
+      return;
+    }
 
     // Create transporter
     this.transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465, // true for 465, false for other ports
-      auth: user && pass ? {
+      secure: port === 465,
+      auth: {
         user,
         pass,
-      } : undefined,
+      },
     });
+
+    this.emailEnabled = true;
+    this.logger.log(
+      `Email service initialized: ${host}:${port} from ${this.fromEmail}`,
+    );
   }
 
-  /**
-   * Send email verification link
-   */
   async sendVerificationEmail(email: string, token: string): Promise<void> {
+    if (!this.emailEnabled || !this.transporter) {
+      this.logger.warn(
+        `Cannot send verification email to ${email}: Email service not configured`,
+      );
+      return;
+    }
+
     const verificationUrl = `${this.appUrl}/auth/verify?token=${token}`;
 
-    await this.transporter.sendMail({
-      from: this.fromEmail,
-      to: email,
-      subject: 'Verify Your Email - Meditory ERP',
-      html: `
+    try {
+      await this.transporter.sendMail({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Verify Your Email - Meditory ERP',
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -51,19 +80,16 @@ export class EmailService {
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
             <h2 style="color: #2c3e50; margin-top: 0;">Verify Your Email Address</h2>
             <p>Thank you for registering with Meditory ERP. Please click the button below to verify your email address:</p>
-
             <div style="text-align: center; margin: 30px 0;">
               <a href="${verificationUrl}"
                  style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                 Verify Email
               </a>
             </div>
-
             <p style="color: #7f8c8d; font-size: 14px;">
               If the button doesn't work, copy and paste this link into your browser:<br>
               <a href="${verificationUrl}" style="color: #3498db; word-break: break-all;">${verificationUrl}</a>
             </p>
-
             <p style="color: #7f8c8d; font-size: 14px; margin-top: 30px;">
               This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
             </p>
@@ -71,7 +97,7 @@ export class EmailService {
         </body>
         </html>
       `,
-      text: `
+        text: `
         Verify Your Email Address
 
         Thank you for registering with Meditory ERP. Please verify your email address by clicking the link below:
@@ -80,20 +106,33 @@ export class EmailService {
 
         This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
       `,
-    });
+      });
+      this.logger.log(`Verification email sent successfully to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${email}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
-  /**
-   * Send password reset link
-   */
   async sendPasswordResetEmail(email: string, token: string): Promise<void> {
+    if (!this.emailEnabled || !this.transporter) {
+      this.logger.warn(
+        `Cannot send password reset email to ${email}: Email service not configured`,
+      );
+      return;
+    }
+
     const resetUrl = `${this.appUrl}/auth/reset-password?token=${token}`;
 
-    await this.transporter.sendMail({
-      from: this.fromEmail,
-      to: email,
-      subject: 'Reset Your Password - Meditory ERP',
-      html: `
+    try {
+      await this.transporter.sendMail({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Reset Your Password - Meditory ERP',
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -104,19 +143,16 @@ export class EmailService {
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
             <h2 style="color: #2c3e50; margin-top: 0;">Reset Your Password</h2>
             <p>We received a request to reset your password for your Meditory ERP account. Click the button below to reset it:</p>
-
             <div style="text-align: center; margin: 30px 0;">
               <a href="${resetUrl}"
                  style="background-color: #e74c3c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                 Reset Password
               </a>
             </div>
-
             <p style="color: #7f8c8d; font-size: 14px;">
               If the button doesn't work, copy and paste this link into your browser:<br>
               <a href="${resetUrl}" style="color: #e74c3c; word-break: break-all;">${resetUrl}</a>
             </p>
-
             <p style="color: #7f8c8d; font-size: 14px; margin-top: 30px;">
               This link will expire in 24 hours. If you didn't request a password reset, you can safely ignore this email.
             </p>
@@ -124,7 +160,7 @@ export class EmailService {
         </body>
         </html>
       `,
-      text: `
+        text: `
         Reset Your Password
 
         We received a request to reset your password for your Meditory ERP account. Click the link below to reset it:
@@ -133,18 +169,29 @@ export class EmailService {
 
         This link will expire in 24 hours. If you didn't request a password reset, you can safely ignore this email.
       `,
-    });
+      });
+      this.logger.log(`Password reset email sent successfully to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send password reset email to ${email}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
-  /**
-   * Test email connection
-   */
   async testConnection(): Promise<boolean> {
+    if (!this.emailEnabled || !this.transporter) {
+      this.logger.warn('Cannot test connection: Email service not configured');
+      return false;
+    }
+
     try {
       await this.transporter.verify();
+      this.logger.log('Email service connection verified successfully');
       return true;
     } catch (error) {
-      console.error('Email service connection failed:', error);
+      this.logger.error('Email service connection failed:', error);
       return false;
     }
   }
