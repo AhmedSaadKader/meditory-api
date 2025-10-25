@@ -26,9 +26,12 @@ export class NativeAuthenticationStrategy
   ) {}
 
   async authenticate(data: NativeAuthenticationData): Promise<User | false> {
-    // 1. Find user by email (must not be deleted)
+    // 1. Find user by email OR username (must not be deleted)
     const user = await this.userRepository.findOne({
-      where: { email: data.username, deletedAt: IsNull() },
+      where: [
+        { email: data.username, deletedAt: IsNull() },
+        { username: data.username, deletedAt: IsNull() },
+      ],
       relations: ['authenticationMethods', 'roles'],
     });
 

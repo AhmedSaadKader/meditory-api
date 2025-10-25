@@ -41,10 +41,6 @@ export class AuthService {
       return { error: 'Invalid credentials' };
     }
 
-    // Check if email verification is required
-    if (!user.verified) {
-      return { error: 'Email not verified' };
-    }
 
     // Use transaction to update lastLogin and create session atomically
     return this.dataSource.transaction(async (manager) => {
@@ -79,27 +75,27 @@ export class AuthService {
   }
 
   /**
-   * Register a new user with email and password
+   * Register a new user with email/username and password
    */
   async register(
     email: string,
     password: string,
+    username?: string,
     firstName?: string,
     lastName?: string,
   ): Promise<User> {
     return this.dataSource.transaction(async (manager) => {
-      // 1. Create unverified user
+      // 1. Create verified user (no email verification required)
       const user = manager.create(User, {
         email,
-        username: email,
+        username: username || email, // Use provided username or email as username
         firstName,
         lastName,
-        verified: false,
+        verified: true, // Auto-verify users
       });
       await manager.save(user);
 
-      // 2. Generate verification token
-      const verificationToken = crypto.randomBytes(32).toString('hex');
+      // 2. Create authentication method
       const passwordHash = await this.passwordCipher.hash(password);
 
       const authMethod = manager.create(NativeAuthenticationMethod, {
@@ -108,11 +104,11 @@ export class AuthService {
         type: 'native',
         identifier: email,
         passwordHash,
-        verificationToken,
+        verificationToken: null, // No verification needed
       });
       await manager.save(authMethod);
 
-      // 3. Assign default role (customer/pharmacist based on requirements)
+      // 3. Assign default role (pharmacist)
       const defaultRole = await manager.findOne(Role, {
         where: { code: 'pharmacist' },
       });
@@ -122,8 +118,7 @@ export class AuthService {
         await manager.save(user);
       }
 
-      // Send verification email
-      await this.emailService.sendVerificationEmail(email, verificationToken);
+      // No verification email sent
 
       return user;
     });

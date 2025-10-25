@@ -19,7 +19,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ unique: true })
   username: string;
 
   @Column({ name: 'first_name', nullable: true })

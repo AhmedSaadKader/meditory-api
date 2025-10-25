@@ -27,6 +27,14 @@ export class RegisterDto {
   password: string;
 
   @ApiPropertyOptional({
+    description: 'Username (optional, defaults to email if not provided)',
+    example: 'johndoe',
+  })
+  @IsString()
+  @IsOptional()
+  username?: string;
+
+  @ApiPropertyOptional({
     description: 'User first name',
     example: 'John',
   })

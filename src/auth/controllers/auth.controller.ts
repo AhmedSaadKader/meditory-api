@@ -189,29 +189,30 @@ export class AuthController {
       const user = await this.authService.register(
         registerDto.email,
         registerDto.password,
+        registerDto.username,
         registerDto.firstName,
         registerDto.lastName,
       );
 
       return {
         success: true,
-        message:
-          'Registration successful. Please check your email to verify your account.',
+        message: 'Registration successful. You can now log in.',
         user: {
           userId: user.userId,
           email: user.email,
+          username: user.username,
           verified: user.verified,
         },
       };
     } catch (error: unknown) {
-      // Check if it's a duplicate email error (PostgreSQL unique violation)
+      // Check if it's a duplicate email/username error (PostgreSQL unique violation)
       if (
         typeof error === 'object' &&
         error !== null &&
         'code' in error &&
         error.code === '23505'
       ) {
-        throw new ConflictException('Email already registered');
+        throw new ConflictException('Email or username already registered');
       }
       throw error;
     }
