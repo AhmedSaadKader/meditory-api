@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
@@ -9,7 +13,11 @@ import { UpdateRoleDto } from '../dto/update-role.dto';
 @Injectable()
 export class RoleService {
   // System role constants (following Vendure pattern)
-  private readonly SYSTEM_ROLE_CODES = ['superadmin', 'pharmacist', 'pharmacy_admin'];
+  private readonly SYSTEM_ROLE_CODES = [
+    'superadmin',
+    'pharmacist',
+    'pharmacy_admin',
+  ];
 
   constructor(
     @InjectRepository(Role)
@@ -51,7 +59,9 @@ export class RoleService {
     // Ensure unique code
     const existing = await this.findByCode(createRoleDto.code);
     if (existing) {
-      throw new BadRequestException(`Role with code '${createRoleDto.code}' already exists`);
+      throw new BadRequestException(
+        `Role with code '${createRoleDto.code}' already exists`,
+      );
     }
 
     // Auto-add Authenticated permission (Vendure pattern)
@@ -81,7 +91,7 @@ export class RoleService {
     // Protect system roles (Vendure pattern)
     if (role.isSystem || this.SYSTEM_ROLE_CODES.includes(role.code)) {
       throw new BadRequestException(
-        `Cannot modify system role '${role.code}'. System roles are protected.`
+        `Cannot modify system role '${role.code}'. System roles are protected.`,
       );
     }
 
@@ -97,9 +107,12 @@ export class RoleService {
     }
 
     // Prevent code changes if trying to use system role code
-    if (updateRoleDto.code && this.SYSTEM_ROLE_CODES.includes(updateRoleDto.code)) {
+    if (
+      updateRoleDto.code &&
+      this.SYSTEM_ROLE_CODES.includes(updateRoleDto.code)
+    ) {
       throw new BadRequestException(
-        `Cannot use system role code '${updateRoleDto.code}'`
+        `Cannot use system role code '${updateRoleDto.code}'`,
       );
     }
 
@@ -119,7 +132,7 @@ export class RoleService {
     // Protect system roles (Vendure pattern)
     if (role.isSystem || this.SYSTEM_ROLE_CODES.includes(role.code)) {
       throw new BadRequestException(
-        `Cannot delete system role '${role.code}'. System roles are protected.`
+        `Cannot delete system role '${role.code}'. System roles are protected.`,
       );
     }
 
@@ -146,7 +159,7 @@ export class RoleService {
       // Prevent assigning non-assignable permissions
       if (nonAssignablePermissions.includes(permission)) {
         throw new BadRequestException(
-          `Permission '${permission}' cannot be assigned to roles`
+          `Permission '${permission}' cannot be assigned to roles`,
         );
       }
     }
@@ -164,7 +177,13 @@ export class RoleService {
    */
   getAssignablePermissions(): Permission[] {
     return Object.values(Permission).filter(
-      (p) => ![Permission.SuperAdmin, Permission.Owner, Permission.Public, Permission.Authenticated].includes(p)
+      (p) =>
+        ![
+          Permission.SuperAdmin,
+          Permission.Owner,
+          Permission.Public,
+          Permission.Authenticated,
+        ].includes(p),
     );
   }
 }
