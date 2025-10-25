@@ -44,7 +44,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Login',
     description:
-      'Authenticate user with email and password. Returns user data and session token.',
+      'Authenticate user with username or email and password. Returns user data and session token.',
   })
   @ApiResponse({
     status: 200,
@@ -56,6 +56,7 @@ export class AuthController {
         user: {
           userId: 1,
           email: 'user@example.com',
+          username: 'johndoe',
           verified: true,
         },
       },
@@ -63,11 +64,11 @@ export class AuthController {
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials or email not verified',
+    description: 'Invalid credentials',
   })
   async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     const result = await this.authService.authenticate(
-      loginDto.email,
+      loginDto.usernameOrEmail,
       loginDto.password,
       req.ip,
       req.headers['user-agent'],
@@ -88,6 +89,7 @@ export class AuthController {
       user: {
         userId: result.user.userId,
         email: result.user.email,
+        username: result.user.username,
         verified: result.user.verified,
       },
     };
@@ -140,6 +142,7 @@ export class AuthController {
       example: {
         userId: 1,
         email: 'user@example.com',
+        username: 'johndoe',
         verified: true,
         permissions: ['Authenticated'],
       },
@@ -154,6 +157,7 @@ export class AuthController {
     return {
       userId: ctx.user.userId,
       email: ctx.user.email,
+      username: ctx.user.username,
       verified: ctx.user.verified,
       permissions: ctx.user.permissions,
     };
@@ -164,7 +168,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Register new user',
     description:
-      'Create a new user account. Email verification required before login.',
+      'Create a new user account. You can login immediately after registration.',
   })
   @ApiResponse({
     status: 201,
@@ -172,18 +176,21 @@ export class AuthController {
     schema: {
       example: {
         success: true,
-        message:
-          'Registration successful. Please check your email to verify your account.',
+        message: 'Registration successful. You can now log in.',
         user: {
           userId: 1,
           email: 'newuser@example.com',
-          verified: false,
+          username: 'johndoe',
+          verified: true,
         },
       },
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
-  @ApiResponse({ status: 409, description: 'Email already registered' })
+  @ApiResponse({
+    status: 409,
+    description: 'Email or username already registered',
+  })
   async register(@Body() registerDto: RegisterDto) {
     try {
       const user = await this.authService.register(

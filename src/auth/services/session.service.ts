@@ -14,6 +14,7 @@ export interface CachedSession {
   user: {
     userId: number;
     email: string;
+    username: string;
     verified: boolean;
     permissions: string[];
   };
@@ -219,6 +220,7 @@ export class SessionService {
       user: {
         userId: user.userId,
         email: user.email,
+        username: user.username,
         verified: user.verified,
         permissions: Array.from(permissions),
       },
