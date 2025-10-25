@@ -25,6 +25,7 @@ import { RoleService } from '../services/role.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { AssignRoleDto } from '../dto/assign-role.dto';
+import { ResetUserPasswordDto } from '../dto/reset-user-password.dto';
 import { PasswordCipherService } from '../services/password-cipher.service';
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -56,7 +57,7 @@ export class UserController {
       example: [
         {
           userId: 1,
-          email: 'user@example.com',
+          username: 'username',
           firstName: 'John',
           lastName: 'Doe',
           verified: true,
@@ -72,7 +73,7 @@ export class UserController {
     const users = await this.userService.findAll();
     return users.map((user) => ({
       userId: user.userId,
-      email: user.email,
+      username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       verified: user.verified,
@@ -99,7 +100,7 @@ export class UserController {
     schema: {
       example: {
         userId: 1,
-        email: 'user@example.com',
+        username: 'username',
         firstName: 'John',
         lastName: 'Doe',
         verified: true,
@@ -126,7 +127,7 @@ export class UserController {
 
     return {
       userId: user.userId,
-      email: user.email,
+      username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       verified: user.verified,
@@ -155,7 +156,7 @@ export class UserController {
         success: true,
         user: {
           userId: 2,
-          email: 'newuser@example.com',
+          username: 'newusername',
           verified: false,
         },
       },
@@ -167,8 +168,7 @@ export class UserController {
   async create(@Body() createUserDto: CreateUserDto) {
     // Create user
     const user = await this.userService.create({
-      email: createUserDto.email,
-      username: createUserDto.email,
+      username: createUserDto.username,
       firstName: createUserDto.firstName,
       lastName: createUserDto.lastName,
       verified: createUserDto.verified ?? false,
@@ -180,7 +180,7 @@ export class UserController {
       user,
       userId: user.userId,
       type: 'native',
-      identifier: createUserDto.email,
+      identifier: createUserDto.username,
       passwordHash,
     });
 
@@ -188,7 +188,7 @@ export class UserController {
       success: true,
       user: {
         userId: user.userId,
-        email: user.email,
+        username: user.username,
         verified: user.verified,
       },
     };
@@ -209,7 +209,7 @@ export class UserController {
         success: true,
         user: {
           userId: 1,
-          email: 'user@example.com',
+          username: 'username',
           firstName: 'John',
           lastName: 'Doe',
           verified: true,
@@ -234,11 +234,50 @@ export class UserController {
       success: true,
       user: {
         userId: user.userId,
-        email: user.email,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         verified: user.verified,
       },
+    };
+  }
+
+  @Post(':id/reset-password')
+  @Allow(Permission.UpdateUser)
+  @ApiOperation({
+    summary: 'Reset user password',
+    description:
+      'Reset password for a user (admin operation). Requires UpdateUser permission.',
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Password reset successfully',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async resetPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() resetPasswordDto: ResetUserPasswordDto,
+  ) {
+    const user = await this.userService.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.userService.resetPassword(id, resetPasswordDto.newPassword);
+
+    return {
+      success: true,
+      message: 'Password reset successfully',
     };
   }
 

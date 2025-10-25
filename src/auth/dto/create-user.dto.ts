@@ -1,5 +1,4 @@
 import {
-  IsEmail,
   IsNotEmpty,
   IsString,
   MinLength,
@@ -10,12 +9,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
   @ApiProperty({
-    description: 'User email address',
-    example: 'user@example.com',
+    description: 'Username',
+    example: 'Username',
   })
-  @IsEmail()
   @IsNotEmpty()
-  email: string;
+  username: string;
 
   @ApiProperty({
     description: 'User password (minimum 6 characters)',

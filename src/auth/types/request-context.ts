@@ -16,13 +16,6 @@ export class RequestContext {
   }
 
   /**
-   * Get user email from session
-   */
-  get userEmail(): string | undefined {
-    return this.session?.user?.email;
-  }
-
-  /**
    * Get user from session
    */
   get user() {

@@ -7,7 +7,7 @@ import { PasswordCipherService } from '../services/password-cipher.service';
 import { AuthenticationStrategy } from './authentication-strategy.interface';
 
 export interface NativeAuthenticationData {
-  username: string; // email
+  username: string;
   password: string;
 }
 
@@ -26,12 +26,9 @@ export class NativeAuthenticationStrategy
   ) {}
 
   async authenticate(data: NativeAuthenticationData): Promise<User | false> {
-    // 1. Find user by email OR username (must not be deleted)
+    // 1. Find user by username (must not be deleted)
     const user = await this.userRepository.findOne({
-      where: [
-        { email: data.username, deletedAt: IsNull() },
-        { username: data.username, deletedAt: IsNull() },
-      ],
+      where: { username: data.username, deletedAt: IsNull() },
       relations: ['authenticationMethods', 'roles'],
     });
 

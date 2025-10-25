@@ -13,7 +13,6 @@ export interface CachedSession {
   cacheExpiry: number;
   user: {
     userId: number;
-    email: string;
     username: string;
     verified: boolean;
     permissions: string[];
@@ -219,7 +218,6 @@ export class SessionService {
       authenticationStrategy: session.authenticationStrategy,
       user: {
         userId: user.userId,
-        email: user.email,
         username: user.username,
         verified: user.verified,
         permissions: Array.from(permissions),

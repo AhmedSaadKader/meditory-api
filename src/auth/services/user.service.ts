@@ -3,13 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { SessionService } from './session.service';
+import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
+import { PasswordCipherService } from './password-cipher.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(NativeAuthenticationMethod)
+    private authMethodRepository: Repository<NativeAuthenticationMethod>,
     private sessionService: SessionService,
+    private passwordCipher: PasswordCipherService,
   ) {}
 
   /**
@@ -26,12 +31,12 @@ export class UserService {
   }
 
   /**
-   * Find user by email (filters deleted users)
+   * Find user by username (filters deleted users)
    */
-  async findByEmail(email: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: {
-        email,
+        username,
         deletedAt: IsNull(),
       },
       relations: ['roles', 'authenticationMethods'],
@@ -144,5 +149,34 @@ export class UserService {
 
     user.roles = user.roles.filter((role) => role.roleId !== roleId);
     return this.userRepository.save(user);
+  }
+
+  /**
+   * Reset user password (admin operation)
+   */
+  async resetPassword(userId: number, newPassword: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Find the native authentication method for this user
+    const authMethod = await this.authMethodRepository.findOne({
+      where: { userId, type: 'native' },
+    });
+
+    if (!authMethod) {
+      throw new Error('Native authentication method not found for this user');
+    }
+
+    // Hash the new password
+    const passwordHash = await this.passwordCipher.hash(newPassword);
+
+    // Update the password
+    authMethod.passwordHash = passwordHash;
+    await this.authMethodRepository.save(authMethod);
+
+    // Invalidate all sessions to force re-login
+    await this.sessionService.deleteSessionsByUser(user);
   }
 }

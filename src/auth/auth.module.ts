@@ -17,7 +17,6 @@ import { SessionService } from './services/session.service';
 import { AuthService } from './services/auth.service';
 import { UserService } from './services/user.service';
 import { RoleService } from './services/role.service';
-import { EmailService } from './services/email.service';
 
 // Strategies
 import { NativeAuthenticationStrategy } from './strategies/native-authentication.strategy';
@@ -65,7 +64,6 @@ import { RoleController } from './controllers/role.controller';
     AuthService,
     UserService,
     RoleService,
-    EmailService,
 
     // Strategies
     NativeAuthenticationStrategy,

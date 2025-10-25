@@ -4,12 +4,10 @@ import { Repository, DataSource, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Session } from '../entities/session.entity';
 import { SessionService } from './session.service';
-import { EmailService } from './email.service';
 import { NativeAuthenticationStrategy } from '../strategies/native-authentication.strategy';
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { PasswordCipherService } from './password-cipher.service';
 import { Role } from '../entities/role.entity';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +15,6 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private sessionService: SessionService,
-    private emailService: EmailService,
     private nativeAuthStrategy: NativeAuthenticationStrategy,
     private passwordCipher: PasswordCipherService,
     private dataSource: DataSource,
@@ -40,7 +37,6 @@ export class AuthService {
     if (!user) {
       return { error: 'Invalid credentials' };
     }
-
 
     // Use transaction to update lastLogin and create session atomically
     return this.dataSource.transaction(async (manager) => {
@@ -75,23 +71,21 @@ export class AuthService {
   }
 
   /**
-   * Register a new user with email/username and password
+   * Register a new user with username and password
    */
   async register(
-    email: string,
+    username: string,
     password: string,
-    username?: string,
     firstName?: string,
     lastName?: string,
   ): Promise<User> {
     return this.dataSource.transaction(async (manager) => {
-      // 1. Create verified user (no email verification required)
+      // 1. Create user
       const user = manager.create(User, {
-        email,
-        username: username || email, // Use provided username or email as username
+        username,
         firstName,
         lastName,
-        verified: true, // Auto-verify users
+        verified: true,
       });
       await manager.save(user);
 
@@ -102,9 +96,8 @@ export class AuthService {
         user,
         userId: user.userId,
         type: 'native',
-        identifier: email,
+        identifier: username,
         passwordHash,
-        verificationToken: null, // No verification needed
       });
       await manager.save(authMethod);
 
@@ -118,150 +111,39 @@ export class AuthService {
         await manager.save(user);
       }
 
-      // No verification email sent
-
       return user;
     });
   }
 
   /**
-   * Verify user email with token
+   * Admin-only password reset
    */
-  async verifyEmail(token: string): Promise<boolean> {
-    return this.dataSource.transaction(async (manager) => {
-      // Find auth method by token
-      const authMethod = await manager.findOne(NativeAuthenticationMethod, {
-        where: { verificationToken: token },
-        relations: ['user'],
-      });
-
-      if (!authMethod) {
-        return false; // Invalid token
-      }
-
-      // Check token age (24 hour expiry)
-      const tokenAge = Date.now() - authMethod.createdAt.getTime();
-      const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
-      if (tokenAge > MAX_AGE) {
-        return false; // Expired
-      }
-
-      // Mark user as verified
-      authMethod.user.verified = true;
-      await manager.save(authMethod.user);
-
-      // Clear token (one-time use)
-      authMethod.verificationToken = null;
-      await manager.save(authMethod);
-
-      return true;
-    });
-  }
-
-  /**
-   * Resend verification email
-   */
-  async resendVerificationEmail(email: string): Promise<boolean> {
+  async resetUserPassword(
+    userId: number,
+    newPassword: string,
+  ): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
       const user = await manager.findOne(User, {
-        where: { email, verified: false },
+        where: { userId, deletedAt: IsNull() },
         relations: ['authenticationMethods'],
       });
 
       if (!user) {
-        return false; // Already verified or doesn't exist
+        return false;
       }
 
       const nativeAuth = user.getNativeAuthenticationMethod();
       if (!nativeAuth) {
         return false;
-      }
-
-      // Generate new token
-      nativeAuth.verificationToken = crypto.randomBytes(32).toString('hex');
-      await manager.save(nativeAuth);
-
-      // Send verification email
-      await this.emailService.sendVerificationEmail(email, nativeAuth.verificationToken);
-
-      return true;
-    });
-  }
-
-  /**
-   * Request password reset (Vendure pattern)
-   * Always returns true to prevent email enumeration
-   */
-  async requestPasswordReset(email: string): Promise<boolean> {
-    return this.dataSource.transaction(async (manager) => {
-      const user = await manager.findOne(User, {
-        where: { email, deletedAt: IsNull() },
-        relations: ['authenticationMethods'],
-      });
-
-      // Always return true to prevent email enumeration
-      if (!user) {
-        return true;
-      }
-
-      const nativeAuth = user.getNativeAuthenticationMethod();
-      if (!nativeAuth) {
-        return true;
-      }
-
-      // Generate reset token (32 bytes = 64 hex chars, like Vendure)
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      // Reset expiry: 24 hours (stored in token expiry field if needed in future)
-
-      nativeAuth.passwordResetToken = resetToken;
-      await manager.save(nativeAuth);
-
-      // Send password reset email
-      await this.emailService.sendPasswordResetEmail(email, resetToken);
-
-      return true;
-    });
-  }
-
-  /**
-   * Reset password with token (Vendure pattern)
-   */
-  async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    return this.dataSource.transaction(async (manager) => {
-      // Find auth method by reset token
-      const authMethod = await manager.findOne(NativeAuthenticationMethod, {
-        where: { passwordResetToken: token },
-        relations: ['user'],
-      });
-
-      if (!authMethod || !authMethod.user) {
-        return false; // Invalid token
-      }
-
-      // Check if user is deleted
-      if (authMethod.user.deletedAt) {
-        return false;
-      }
-
-      // Vendure uses 2-hour expiry, but we'll keep 24 hours
-      // Check token age (tokens don't have separate expiry field in our schema)
-      const tokenAge = Date.now() - authMethod.updatedAt.getTime();
-      const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
-      if (tokenAge > MAX_AGE) {
-        return false; // Expired
       }
 
       // Hash new password
       const passwordHash = await this.passwordCipher.hash(newPassword);
-      authMethod.passwordHash = passwordHash;
+      nativeAuth.passwordHash = passwordHash;
+      await manager.save(nativeAuth);
 
-      // Clear reset token (one-time use, like Vendure)
-      authMethod.passwordResetToken = null;
-
-      await manager.save(authMethod);
-
-      // Invalidate all existing sessions (Vendure does this for security)
-      await this.sessionService.deleteSessionsByUser(authMethod.user);
+      // Invalidate all user sessions for security
+      await this.sessionService.deleteSessionsByUser(user);
 
       return true;
     });
