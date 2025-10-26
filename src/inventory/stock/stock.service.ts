@@ -26,7 +26,7 @@ export class StockService {
     private dataSource: DataSource,
   ) {}
 
-  async receiveStock(dto: ReceiveStockDto) {
+  async receiveStock(dto: ReceiveStockDto, userId: number) {
     return await this.dataSource.transaction(async (manager) => {
       // 1. Validate that drug exists and get reference data
       const drug = await manager.findOne(Drug, {
@@ -102,7 +102,7 @@ export class StockService {
         balanceAfter: Number(savedStock.quantity),
         referenceType: 'manual_receive',
         referenceNumber: dto.supplierInvoiceNumber,
-        userId: dto.userId,
+        userId: userId,
         notes: dto.notes,
       });
 
@@ -119,37 +119,31 @@ export class StockService {
     });
   }
 
-  async dispenseStock(dto: DispenseStockDto) {
+  async dispenseStock(dto: DispenseStockDto, userId: number) {
     return await this.dataSource.transaction(async (manager) => {
-      // 1. Find available batches using FEFO (First Expired, First Out)
-      const availableBatches = await manager.find(PharmacyStock, {
-        where: {
-          pharmacyId: dto.pharmacyId,
-          drugId: dto.drugId,
-          isQuarantined: false,
-        },
-        order: {
-          expiryDate: 'ASC', // FEFO logic
-        },
-      });
-
-      // Filter out expired batches
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const validBatches = availableBatches.filter((batch) => {
-        const expiryDate = new Date(batch.expiryDate);
-        return expiryDate >= today;
-      });
+      // 1. Find available batches using FEFO with pessimistic locking to prevent race conditions
+      const availableBatches = await manager
+        .createQueryBuilder(PharmacyStock, 'stock')
+        .setLock('pessimistic_write') // Lock rows to prevent concurrent modifications
+        .where('stock.pharmacyId = :pharmacyId', { pharmacyId: dto.pharmacyId })
+        .andWhere('stock.drugId = :drugId', { drugId: dto.drugId })
+        .andWhere('stock.isQuarantined = false')
+        .andWhere('stock.expiryDate >= :today', { today }) // Filter expired at DB level
+        .andWhere('stock.quantity > 0')
+        .orderBy('stock.expiryDate', 'ASC') // FEFO logic
+        .getMany();
 
-      if (validBatches.length === 0) {
+      if (availableBatches.length === 0) {
         throw new NotFoundException(
           `No available stock found for drug ${dto.drugId} in pharmacy ${dto.pharmacyId}`,
         );
       }
 
       // 2. Calculate total available stock
-      const totalAvailable = validBatches.reduce(
+      const totalAvailable = availableBatches.reduce(
         (sum, batch) =>
           sum + (Number(batch.quantity) - Number(batch.allocatedQuantity)),
         0,
@@ -165,7 +159,7 @@ export class StockService {
       let remainingQty = dto.quantity;
       const movements: StockMovement[] = [];
 
-      for (const batch of validBatches) {
+      for (const batch of availableBatches) {
         if (remainingQty <= 0) break;
 
         const available =
@@ -188,7 +182,7 @@ export class StockService {
           balanceAfter: Number(batch.quantity),
           referenceType: 'manual_dispense',
           referenceNumber: dto.referenceNumber,
-          userId: dto.userId,
+          userId: userId,
           notes: dto.notes,
         });
 
@@ -235,7 +229,7 @@ export class StockService {
     });
   }
 
-  async adjustStock(dto: AdjustStockDto) {
+  async adjustStock(dto: AdjustStockDto, userId: number) {
     return await this.dataSource.transaction(async (manager) => {
       // 1. Find the stock batch
       const stock = await manager.findOne(PharmacyStock, {
@@ -262,6 +256,14 @@ export class StockService {
         );
       }
 
+      // Prevent adjusting below allocated quantity
+      if (newQuantity < Number(stock.allocatedQuantity)) {
+        throw new BadRequestException(
+          `Cannot adjust stock below allocated amount. Allocated: ${stock.allocatedQuantity}, ` +
+            `Attempted new quantity: ${newQuantity}. Release allocations first.`,
+        );
+      }
+
       // 3. Update stock
       stock.quantity = newQuantity;
       await manager.save(PharmacyStock, stock);
@@ -275,7 +277,7 @@ export class StockService {
         quantity: dto.adjustmentQuantity,
         balanceAfter: newQuantity,
         referenceType: 'manual_adjustment',
-        userId: dto.userId,
+        userId: userId,
         notes: dto.reason,
         metadata: {
           oldQuantity,
@@ -354,17 +356,13 @@ export class StockService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Find all expired stock
-      const expiredStocks = await manager.find(PharmacyStock, {
-        where: {
-          pharmacyId,
-        },
-      });
-
-      const expiredBatches = expiredStocks.filter(
-        (stock) =>
-          new Date(stock.expiryDate) < today && Number(stock.quantity) > 0,
-      );
+      // Find expired stock with quantity > 0 using efficient query
+      const expiredBatches = await manager
+        .createQueryBuilder(PharmacyStock, 'stock')
+        .where('stock.pharmacyId = :pharmacyId', { pharmacyId })
+        .andWhere('stock.expiryDate < :today', { today })
+        .andWhere('stock.quantity > 0')
+        .getMany();
 
       if (expiredBatches.length === 0) {
         return {
@@ -412,7 +410,7 @@ export class StockService {
     });
   }
 
-  async transferStock(dto: TransferStockDto) {
+  async transferStock(dto: TransferStockDto, userId: number) {
     return await this.dataSource.transaction(async (manager) => {
       // 1. Find source stock
       const sourceStock = await manager.findOne(PharmacyStock, {
@@ -452,7 +450,7 @@ export class StockService {
         balanceAfter: Number(sourceStock.quantity),
         referenceType: 'inter_pharmacy_transfer',
         referenceNumber: `TO-${dto.toPharmacyId}`,
-        userId: dto.userId,
+        userId: userId,
         metadata: {
           toPharmacyId: dto.toPharmacyId,
         },
@@ -501,7 +499,7 @@ export class StockService {
         balanceAfter: Number(destStock.quantity),
         referenceType: 'inter_pharmacy_transfer',
         referenceNumber: `FROM-${dto.fromPharmacyId}`,
-        userId: dto.userId,
+        userId: userId,
         metadata: {
           fromPharmacyId: dto.fromPharmacyId,
         },

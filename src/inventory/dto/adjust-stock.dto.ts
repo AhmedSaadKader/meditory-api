@@ -1,5 +1,5 @@
-import { IsString, IsNumber, IsUUID, IsOptional, Min } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNumber, IsUUID, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class AdjustStockDto {
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
@@ -14,21 +14,11 @@ export class AdjustStockDto {
   @IsString()
   batchNumber: string;
 
-  @ApiProperty({
-    example: 5,
-    description: 'Adjustment quantity (positive to add, negative to subtract)'
-  })
+  @ApiProperty({ example: -5, description: 'Positive to add, negative to subtract' })
   @IsNumber()
   adjustmentQuantity: number;
 
-  @ApiProperty({
-    example: 'Physical count revealed discrepancy',
-    description: 'Reason for adjustment'
-  })
+  @ApiProperty({ example: 'Physical count discrepancy' })
   @IsString()
   reason: string;
-
-  @ApiProperty({ example: 7 })
-  @IsNumber()
-  userId: number;
 }

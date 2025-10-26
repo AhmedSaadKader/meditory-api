@@ -7,8 +7,10 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  AfterLoad,
 } from 'typeorm';
 import { Pharmacy } from './pharmacy.entity';
+import { Drug } from '../../drugs/entities/drug.entity';
 
 @Entity({ schema: 'operational', name: 'pharmacy_stock' })
 @Index(['pharmacyId', 'drugId', 'batchNumber'], { unique: true })
@@ -23,6 +25,10 @@ export class PharmacyStock {
   @Column({ name: 'pharmacy_id' })
   @Index()
   pharmacyId: string;
+
+  @ManyToOne(() => Drug)
+  @JoinColumn({ name: 'drug_id' })
+  drug: Drug;
 
   @Column({ name: 'drug_id' })
   @Index()
@@ -87,6 +93,24 @@ export class PharmacyStock {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  // Computed properties (populated via @AfterLoad)
+  availableQuantity?: number;
+  isExpired?: boolean;
+  isExpiringSoon?: boolean;
+
+  @AfterLoad()
+  computeDerivedFields() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    this.availableQuantity =
+      Number(this.quantity) - Number(this.allocatedQuantity);
+    this.isExpired = new Date(this.expiryDate) < today;
+    this.isExpiringSoon =
+      new Date(this.expiryDate).getTime() - today.getTime() <
+      90 * 24 * 60 * 60 * 1000; // 90 days
+  }
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

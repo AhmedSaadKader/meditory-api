@@ -10,7 +10,7 @@ export class DispenseStockDto {
   @IsNumber()
   drugId: number;
 
-  @ApiProperty({ example: 5 })
+  @ApiProperty({ example: 50 })
   @IsNumber()
   @Min(0.01)
   quantity: number;
@@ -20,12 +20,8 @@ export class DispenseStockDto {
   @IsOptional()
   referenceNumber?: string;
 
-  @ApiPropertyOptional({ example: 'Dispensed for prescription' })
+  @ApiPropertyOptional({ example: 'Dispensed for prescription #12345' })
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @ApiProperty({ example: 7 })
-  @IsNumber()
-  userId: number;
 }

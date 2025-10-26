@@ -26,7 +26,7 @@ export class ReceiveStockDto {
   @Min(0.01)
   quantity: number;
 
-  @ApiProperty({ example: '2026-12-31' })
+  @ApiProperty({ example: '2026-12-31', description: 'Expiry date must be in the future' })
   @IsDateString()
   expiryDate: string;
 
@@ -35,7 +35,7 @@ export class ReceiveStockDto {
   @Min(0)
   costPrice: number;
 
-  @ApiPropertyOptional({ example: 8.0 })
+  @ApiPropertyOptional({ example: 8.0, description: 'If not provided, uses drug reference price' })
   @IsNumber()
   @IsOptional()
   @Min(0)
@@ -61,8 +61,4 @@ export class ReceiveStockDto {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @ApiProperty({ example: 7 })
-  @IsNumber()
-  userId: number;
 }

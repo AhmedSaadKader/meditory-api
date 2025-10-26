@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, Query, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { Allow } from '../../auth/decorators/allow.decorator';
 import { Permission } from '../../auth/enums/permission.enum';
@@ -19,8 +27,11 @@ export class StockController {
   @Allow(Permission.UpdateInventory)
   @ApiOperation({ summary: 'Receive stock from supplier' })
   @ApiResponse({ status: 201, description: 'Stock received successfully' })
-  receiveStock(@Body() dto: ReceiveStockDto) {
-    return this.stockService.receiveStock(dto);
+  receiveStock(@Body() dto: ReceiveStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.receiveStock(dto, ctx.activeUserId);
   }
 
   @Post('dispense')
@@ -29,8 +40,11 @@ export class StockController {
   @ApiResponse({ status: 201, description: 'Stock dispensed successfully' })
   @ApiResponse({ status: 404, description: 'No available stock found' })
   @ApiResponse({ status: 400, description: 'Insufficient stock' })
-  dispenseStock(@Body() dto: DispenseStockDto) {
-    return this.stockService.dispenseStock(dto);
+  dispenseStock(@Body() dto: DispenseStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.dispenseStock(dto, ctx.activeUserId);
   }
 
   @Get('levels/:pharmacyId')
@@ -63,8 +77,11 @@ export class StockController {
     status: 400,
     description: 'Invalid adjustment (would result in negative stock)',
   })
-  adjustStock(@Body() dto: AdjustStockDto) {
-    return this.stockService.adjustStock(dto);
+  adjustStock(@Body() dto: AdjustStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.adjustStock(dto, ctx.activeUserId);
   }
 
   @Get('low-stock/:pharmacyId')
@@ -113,7 +130,10 @@ export class StockController {
   @ApiResponse({ status: 201, description: 'Stock transferred successfully' })
   @ApiResponse({ status: 404, description: 'Source stock not found' })
   @ApiResponse({ status: 400, description: 'Insufficient stock' })
-  transferStock(@Body() dto: TransferStockDto) {
-    return this.stockService.transferStock(dto);
+  transferStock(@Body() dto: TransferStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.transferStock(dto, ctx.activeUserId);
   }
 }
