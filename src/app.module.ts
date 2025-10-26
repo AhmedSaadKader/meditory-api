@@ -21,6 +21,12 @@ import { Session } from './auth/entities/session.entity';
 import { Role } from './auth/entities/role.entity';
 import { UserRole } from './auth/entities/user-role.entity';
 import { AuditLog } from './auth/entities/audit-log.entity';
+import { InventoryModule } from './inventory/inventory.module';
+
+// Inventory entities
+import { Pharmacy } from './inventory/entities/pharmacy.entity';
+import { PharmacyStock } from './inventory/entities/pharmacy-stock.entity';
+import { StockMovement } from './inventory/entities/stock-movement.entity';
 
 @Module({
   imports: [
@@ -50,6 +56,9 @@ import { AuditLog } from './auth/entities/audit-log.entity';
             Role,
             UserRole,
             AuditLog,
+            Pharmacy,
+            PharmacyStock,
+            StockMovement,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
           ...(useSSL && {
@@ -67,6 +76,7 @@ import { AuditLog } from './auth/entities/audit-log.entity';
     }),
     DrugsModule,
     AuthModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [

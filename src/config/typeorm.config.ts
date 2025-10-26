@@ -9,6 +9,9 @@ import { ExternalAuthenticationMethod } from '../auth/entities/external-authenti
 import { NativeAuthenticationMethod } from '../auth/entities/native-authentication-method.entity';
 import { Role } from '../auth/entities/role.entity';
 import { User } from '../auth/entities/user.entity';
+import { Pharmacy } from '../inventory/entities/pharmacy.entity';
+import { PharmacyStock } from '../inventory/entities/pharmacy-stock.entity';
+import { StockMovement } from '../inventory/entities/stock-movement.entity';
 
 config();
 
@@ -29,6 +32,9 @@ export default new DataSource({
     ExternalAuthenticationMethod,
     Session,
     Role,
+    Pharmacy,
+    PharmacyStock,
+    StockMovement,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
