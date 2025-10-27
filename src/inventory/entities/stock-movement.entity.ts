@@ -82,6 +82,45 @@ export class StockMovement {
   @Column({ nullable: true, name: 'related_movement_id' })
   relatedMovementId: string;
 
+  // ERPNext-inspired valuation tracking
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+    name: 'valuation_rate',
+  })
+  valuationRate?: number; // Rate at time of transaction (cost per unit)
+
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+    name: 'stock_value',
+  })
+  stockValue?: number; // Total stock value after this transaction
+
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+    name: 'stock_value_difference',
+  })
+  stockValueDifference?: number; // Change in stock value from this transaction
+
+  // Posting date/time (when transaction actually occurred vs when recorded)
+  @Column({ type: 'timestamp', nullable: true, name: 'posting_datetime' })
+  postingDateTime?: Date;
+
+  // Fiscal period tracking for financial reports
+  @Column({ length: 20, nullable: true, name: 'fiscal_year' })
+  fiscalYear?: string; // e.g., "2025-2026"
+
+  @Column({ length: 10, nullable: true, name: 'fiscal_period' })
+  fiscalPeriod?: string; // e.g., "2025-Q1" or "2025-01"
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

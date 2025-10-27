@@ -34,6 +34,57 @@ export class StockService {
   ) {}
 
   /**
+   * Get fiscal year for a given date (ERPNext-inspired)
+   * Assumes April-March fiscal year (common in many countries)
+   * Override this based on organization settings if needed
+   */
+  private getFiscalYear(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth(); // 0-11
+
+    // If Jan-Mar, fiscal year is (year-1)-year
+    // If Apr-Dec, fiscal year is year-(year+1)
+    if (month < 3) {
+      // Jan, Feb, Mar
+      return `${year - 1}-${year}`;
+    } else {
+      return `${year}-${year + 1}`;
+    }
+  }
+
+  /**
+   * Get fiscal period (quarter) for a given date
+   */
+  private getFiscalPeriod(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth(); // 0-11
+
+    // Fiscal quarters: Apr-Jun (Q1), Jul-Sep (Q2), Oct-Dec (Q3), Jan-Mar (Q4)
+    let quarter: number;
+    let fiscalYear: string;
+
+    if (month >= 3 && month <= 5) {
+      // Apr-Jun
+      quarter = 1;
+      fiscalYear = `${year}`;
+    } else if (month >= 6 && month <= 8) {
+      // Jul-Sep
+      quarter = 2;
+      fiscalYear = `${year}`;
+    } else if (month >= 9 && month <= 11) {
+      // Oct-Dec
+      quarter = 3;
+      fiscalYear = `${year}`;
+    } else {
+      // Jan-Mar
+      quarter = 4;
+      fiscalYear = `${year - 1}`;
+    }
+
+    return `${fiscalYear}-Q${quarter}`;
+  }
+
+  /**
    * Verify user has access to pharmacy and it belongs to their organization
    */
   private async verifyPharmacyAccess(
@@ -139,7 +190,34 @@ export class StockService {
 
       const savedStock = await manager.save(PharmacyStock, stock);
 
-      // 2. Create stock movement record
+      // 2. Calculate valuation for the movement
+      const valuationRate = dto.costPrice; // Use cost price as valuation rate
+      const stockValueDifference = dto.quantity * valuationRate;
+
+      // Get total stock value for this drug/batch across all movements
+      const previousMovements = await manager.find(StockMovement, {
+        where: {
+          pharmacyId: dto.pharmacyId,
+          drugId: dto.drugId,
+          batchNumber: dto.batchNumber,
+        },
+        order: { createdAt: 'DESC' },
+        take: 1,
+      });
+
+      const previousStockValue =
+        previousMovements.length > 0 && previousMovements[0].stockValue
+          ? Number(previousMovements[0].stockValue)
+          : 0;
+
+      const newStockValue = previousStockValue + stockValueDifference;
+
+      // 3. Determine fiscal period
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
+
+      // 4. Create stock movement record with valuation tracking
       const movement = manager.create(StockMovement, {
         type: StockMovementType.PURCHASE,
         pharmacyId: dto.pharmacyId,
@@ -151,6 +229,13 @@ export class StockService {
         referenceNumber: dto.supplierInvoiceNumber,
         userId: userId,
         notes: dto.notes,
+        // Valuation tracking (ERPNext-inspired)
+        valuationRate,
+        stockValue: newStockValue,
+        stockValueDifference,
+        postingDateTime: now,
+        fiscalYear,
+        fiscalPeriod,
       });
 
       await manager.save(StockMovement, movement);
@@ -208,6 +293,9 @@ export class StockService {
       // 3. Deduct from batches in FEFO order
       let remainingQty = dto.quantity;
       const movements: StockMovement[] = [];
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
 
       for (const batch of availableBatches) {
         if (remainingQty <= 0) break;
@@ -222,7 +310,29 @@ export class StockService {
         batch.quantity = Number(batch.quantity) - toDeduct;
         await manager.save(PharmacyStock, batch);
 
-        // Create movement record
+        // Calculate valuation for this movement
+        const valuationRate = Number(batch.costPrice); // Use batch cost price
+        const stockValueDifference = -toDeduct * valuationRate; // Negative for outgoing
+
+        // Get previous stock value for this batch
+        const previousMovements = await manager.find(StockMovement, {
+          where: {
+            pharmacyId: dto.pharmacyId,
+            drugId: dto.drugId,
+            batchNumber: batch.batchNumber,
+          },
+          order: { createdAt: 'DESC' },
+          take: 1,
+        });
+
+        const previousStockValue =
+          previousMovements.length > 0 && previousMovements[0].stockValue
+            ? Number(previousMovements[0].stockValue)
+            : 0;
+
+        const newStockValue = previousStockValue + stockValueDifference;
+
+        // Create movement record with valuation
         const movement = manager.create(StockMovement, {
           type: StockMovementType.SALE,
           pharmacyId: dto.pharmacyId,
@@ -234,6 +344,13 @@ export class StockService {
           referenceNumber: dto.referenceNumber,
           userId: userId,
           notes: dto.notes,
+          // Valuation tracking
+          valuationRate,
+          stockValue: newStockValue,
+          stockValueDifference,
+          postingDateTime: now,
+          fiscalYear,
+          fiscalPeriod,
         });
 
         await manager.save(StockMovement, movement);
@@ -327,7 +444,32 @@ export class StockService {
       stock.quantity = newQuantity;
       await manager.save(PharmacyStock, stock);
 
-      // 4. Create adjustment movement
+      // 4. Calculate valuation for adjustment
+      const valuationRate = Number(stock.costPrice);
+      const stockValueDifference = dto.adjustmentQuantity * valuationRate;
+
+      const previousMovements = await manager.find(StockMovement, {
+        where: {
+          pharmacyId: dto.pharmacyId,
+          drugId: dto.drugId,
+          batchNumber: dto.batchNumber,
+        },
+        order: { createdAt: 'DESC' },
+        take: 1,
+      });
+
+      const previousStockValue =
+        previousMovements.length > 0 && previousMovements[0].stockValue
+          ? Number(previousMovements[0].stockValue)
+          : 0;
+
+      const newStockValue = previousStockValue + stockValueDifference;
+
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
+
+      // 5. Create adjustment movement with valuation
       const movement = manager.create(StockMovement, {
         type: StockMovementType.ADJUSTMENT,
         pharmacyId: dto.pharmacyId,
@@ -343,6 +485,13 @@ export class StockService {
           newQuantity,
           reason: dto.reason,
         },
+        // Valuation tracking
+        valuationRate,
+        stockValue: newStockValue,
+        stockValueDifference,
+        postingDateTime: now,
+        fiscalYear,
+        fiscalPeriod,
       });
 
       await manager.save(StockMovement, movement);
@@ -441,11 +590,34 @@ export class StockService {
       }
 
       const movements: StockMovement[] = [];
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
 
       for (const batch of expiredBatches) {
         const quantityToRemove = Number(batch.quantity);
+        const valuationRate = Number(batch.costPrice);
+        const stockValueDifference = -quantityToRemove * valuationRate;
 
-        // Create expiry movement
+        // Get previous stock value
+        const previousMovements = await manager.find(StockMovement, {
+          where: {
+            pharmacyId,
+            drugId: batch.drugId,
+            batchNumber: batch.batchNumber,
+          },
+          order: { createdAt: 'DESC' },
+          take: 1,
+        });
+
+        const previousStockValue =
+          previousMovements.length > 0 && previousMovements[0].stockValue
+            ? Number(previousMovements[0].stockValue)
+            : 0;
+
+        const newStockValue = previousStockValue + stockValueDifference;
+
+        // Create expiry movement with valuation
         const movement = manager.create(StockMovement, {
           type: StockMovementType.EXPIRY,
           pharmacyId,
@@ -460,6 +632,13 @@ export class StockService {
             expiryDate: batch.expiryDate,
             costValue: Number(batch.costPrice) * quantityToRemove,
           },
+          // Valuation tracking
+          valuationRate,
+          stockValue: newStockValue,
+          stockValueDifference,
+          postingDateTime: now,
+          fiscalYear,
+          fiscalPeriod,
         });
 
         await manager.save(StockMovement, movement);
@@ -512,7 +691,32 @@ export class StockService {
       sourceStock.quantity = Number(sourceStock.quantity) - dto.quantity;
       await manager.save(PharmacyStock, sourceStock);
 
-      // 3. Create TRANSFER_OUT movement
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
+
+      // 3. Calculate valuation for TRANSFER_OUT
+      const valuationRate = Number(sourceStock.costPrice);
+      const stockValueDifference = -dto.quantity * valuationRate;
+
+      const previousMovementsOut = await manager.find(StockMovement, {
+        where: {
+          pharmacyId: dto.fromPharmacyId,
+          drugId: dto.drugId,
+          batchNumber: dto.batchNumber,
+        },
+        order: { createdAt: 'DESC' },
+        take: 1,
+      });
+
+      const previousStockValueOut =
+        previousMovementsOut.length > 0 && previousMovementsOut[0].stockValue
+          ? Number(previousMovementsOut[0].stockValue)
+          : 0;
+
+      const newStockValueOut = previousStockValueOut + stockValueDifference;
+
+      // 4. Create TRANSFER_OUT movement with valuation
       const transferOutMovement = manager.create(StockMovement, {
         type: StockMovementType.TRANSFER_OUT,
         pharmacyId: dto.fromPharmacyId,
@@ -526,6 +730,13 @@ export class StockService {
         metadata: {
           toPharmacyId: dto.toPharmacyId,
         },
+        // Valuation tracking
+        valuationRate,
+        stockValue: newStockValueOut,
+        stockValueDifference,
+        postingDateTime: now,
+        fiscalYear,
+        fiscalPeriod,
       });
 
       await manager.save(StockMovement, transferOutMovement);
@@ -561,7 +772,27 @@ export class StockService {
 
       await manager.save(PharmacyStock, destStock);
 
-      // 5. Create TRANSFER_IN movement
+      // 6. Calculate valuation for TRANSFER_IN
+      const stockValueDifferenceIn = dto.quantity * valuationRate;
+
+      const previousMovementsIn = await manager.find(StockMovement, {
+        where: {
+          pharmacyId: dto.toPharmacyId,
+          drugId: dto.drugId,
+          batchNumber: dto.batchNumber,
+        },
+        order: { createdAt: 'DESC' },
+        take: 1,
+      });
+
+      const previousStockValueIn =
+        previousMovementsIn.length > 0 && previousMovementsIn[0].stockValue
+          ? Number(previousMovementsIn[0].stockValue)
+          : 0;
+
+      const newStockValueIn = previousStockValueIn + stockValueDifferenceIn;
+
+      // 7. Create TRANSFER_IN movement with valuation
       const transferInMovement = manager.create(StockMovement, {
         type: StockMovementType.TRANSFER_IN,
         pharmacyId: dto.toPharmacyId,
@@ -575,6 +806,13 @@ export class StockService {
         metadata: {
           fromPharmacyId: dto.fromPharmacyId,
         },
+        // Valuation tracking
+        valuationRate,
+        stockValue: newStockValueIn,
+        stockValueDifference: stockValueDifferenceIn,
+        postingDateTime: now,
+        fiscalYear,
+        fiscalPeriod,
       });
 
       await manager.save(StockMovement, transferInMovement);
@@ -630,6 +868,9 @@ export class StockService {
       // 3. Allocate from batches in FEFO order
       let remainingQty = dto.quantity;
       const movements: StockMovement[] = [];
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
 
       for (const batch of availableBatches) {
         if (remainingQty <= 0) break;
@@ -643,7 +884,25 @@ export class StockService {
           Number(batch.allocatedQuantity) + qtyToAllocate;
         await manager.save(PharmacyStock, batch);
 
-        // Create allocation movement (doesn't change quantity, only allocatedQuantity)
+        // Get previous stock value (allocation doesn't change value, just copy it)
+        const previousMovements = await manager.find(StockMovement, {
+          where: {
+            pharmacyId: dto.pharmacyId,
+            drugId: dto.drugId,
+            batchNumber: batch.batchNumber,
+          },
+          order: { createdAt: 'DESC' },
+          take: 1,
+        });
+
+        const previousStockValue =
+          previousMovements.length > 0 && previousMovements[0].stockValue
+            ? Number(previousMovements[0].stockValue)
+            : 0;
+
+        const valuationRate = Number(batch.costPrice);
+
+        // Create allocation movement (doesn't change quantity or value, only allocatedQuantity)
         const movement = manager.create(StockMovement, {
           type: StockMovementType.ALLOCATION,
           pharmacyId: dto.pharmacyId,
@@ -659,6 +918,13 @@ export class StockService {
             allocatedQuantity: qtyToAllocate,
             expiryDate: batch.expiryDate,
           },
+          // Valuation tracking (no change in stock value for allocation)
+          valuationRate,
+          stockValue: previousStockValue,
+          stockValueDifference: 0,
+          postingDateTime: now,
+          fiscalYear,
+          fiscalPeriod,
         });
 
         await manager.save(StockMovement, movement);
@@ -711,6 +977,9 @@ export class StockService {
       // 3. Release from batches in FEFO order
       let remainingQty = dto.quantity;
       const movements: StockMovement[] = [];
+      const now = new Date();
+      const fiscalYear = this.getFiscalYear(now);
+      const fiscalPeriod = this.getFiscalPeriod(now);
 
       for (const batch of allocatedBatches) {
         if (remainingQty <= 0) break;
@@ -722,7 +991,25 @@ export class StockService {
         batch.allocatedQuantity = allocatedInBatch - qtyToRelease;
         await manager.save(PharmacyStock, batch);
 
-        // Create release movement
+        // Get previous stock value (release doesn't change value, just copy it)
+        const previousMovements = await manager.find(StockMovement, {
+          where: {
+            pharmacyId: dto.pharmacyId,
+            drugId: dto.drugId,
+            batchNumber: batch.batchNumber,
+          },
+          order: { createdAt: 'DESC' },
+          take: 1,
+        });
+
+        const previousStockValue =
+          previousMovements.length > 0 && previousMovements[0].stockValue
+            ? Number(previousMovements[0].stockValue)
+            : 0;
+
+        const valuationRate = Number(batch.costPrice);
+
+        // Create release movement (doesn't change quantity or value, only allocatedQuantity)
         const movement = manager.create(StockMovement, {
           type: StockMovementType.RELEASE,
           pharmacyId: dto.pharmacyId,
@@ -738,6 +1025,13 @@ export class StockService {
             releasedQuantity: qtyToRelease,
             expiryDate: batch.expiryDate,
           },
+          // Valuation tracking (no change in stock value for release)
+          valuationRate,
+          stockValue: previousStockValue,
+          stockValueDifference: 0,
+          postingDateTime: now,
+          fiscalYear,
+          fiscalPeriod,
         });
 
         await manager.save(StockMovement, movement);
@@ -752,5 +1046,184 @@ export class StockService {
         movements,
       };
     });
+  }
+
+  /**
+   * Reconcile pharmacy stock - verify PharmacyStock.quantity matches ledger (ERPNext-inspired)
+   * This compares the current state (PharmacyStock) with the ledger (StockMovement history)
+   */
+  async reconcilePharmacyStock(
+    pharmacyId: string,
+    userId: number,
+    ctx: RequestContext,
+  ) {
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
+    return await this.dataSource.transaction(async (manager) => {
+      const stocks = await manager.find(PharmacyStock, {
+        where: { pharmacyId },
+      });
+
+      const discrepancies: any[] = [];
+      const adjustments: StockMovement[] = [];
+
+      for (const stock of stocks) {
+        // Calculate ledger balance by summing all movements
+        const movements = await manager.find(StockMovement, {
+          where: {
+            pharmacyId,
+            drugId: stock.drugId,
+            batchNumber: stock.batchNumber,
+          },
+          order: { createdAt: 'ASC' },
+        });
+
+        const ledgerBalance = movements.reduce(
+          (sum, m) => sum + Number(m.quantity),
+          0,
+        );
+        const stateBalance = Number(stock.quantity);
+
+        if (Math.abs(ledgerBalance - stateBalance) > 0.01) {
+          // Discrepancy found
+          discrepancies.push({
+            drugId: stock.drugId,
+            batchNumber: stock.batchNumber,
+            ledgerBalance,
+            stateBalance,
+            difference: ledgerBalance - stateBalance,
+          });
+
+          // Create adjustment to fix discrepancy
+          const adjustmentQuantity = ledgerBalance - stateBalance;
+          stock.quantity = ledgerBalance;
+          await manager.save(PharmacyStock, stock);
+
+          // Calculate valuation
+          const valuationRate = Number(stock.costPrice);
+          const stockValueDifference = adjustmentQuantity * valuationRate;
+
+          const previousMovements = await manager.find(StockMovement, {
+            where: {
+              pharmacyId,
+              drugId: stock.drugId,
+              batchNumber: stock.batchNumber,
+            },
+            order: { createdAt: 'DESC' },
+            take: 1,
+          });
+
+          const previousStockValue =
+            previousMovements.length > 0 && previousMovements[0].stockValue
+              ? Number(previousMovements[0].stockValue)
+              : 0;
+
+          const newStockValue = previousStockValue + stockValueDifference;
+
+          const now = new Date();
+          const fiscalYear = this.getFiscalYear(now);
+          const fiscalPeriod = this.getFiscalPeriod(now);
+
+          const movement = manager.create(StockMovement, {
+            type: StockMovementType.ADJUSTMENT,
+            pharmacyId,
+            drugId: stock.drugId,
+            batchNumber: stock.batchNumber,
+            quantity: adjustmentQuantity,
+            balanceAfter: ledgerBalance,
+            referenceType: 'ledger_reconciliation',
+            userId,
+            notes: `Reconciliation: Ledger=${ledgerBalance}, State=${stateBalance}`,
+            metadata: {
+              oldQuantity: stateBalance,
+              newQuantity: ledgerBalance,
+              reconciliationType: 'automatic',
+            },
+            valuationRate,
+            stockValue: newStockValue,
+            stockValueDifference,
+            postingDateTime: now,
+            fiscalYear,
+            fiscalPeriod,
+          });
+
+          await manager.save(StockMovement, movement);
+          adjustments.push(movement);
+        }
+      }
+
+      return {
+        success: true,
+        message:
+          discrepancies.length > 0
+            ? `Found and fixed ${discrepancies.length} discrepancies`
+            : 'No discrepancies found',
+        discrepancies,
+        adjustments,
+      };
+    });
+  }
+
+  /**
+   * Get stock valuation report for a pharmacy (ERPNext-inspired)
+   */
+  async getStockValuationReport(pharmacyId: string, ctx: RequestContext) {
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
+    const stocks = await this.pharmacyStockRepository.find({
+      where: { pharmacyId },
+      order: { drugId: 'ASC', batchNumber: 'ASC' },
+    });
+
+    const valuationData = [];
+    let totalStockValue = 0;
+
+    for (const stock of stocks) {
+      const quantity = Number(stock.quantity);
+      const costPrice = Number(stock.costPrice);
+      const sellingPrice = Number(stock.sellingPrice);
+      const stockValue = quantity * costPrice;
+      const potentialRevenue = quantity * sellingPrice;
+      const potentialProfit = potentialRevenue - stockValue;
+
+      totalStockValue += stockValue;
+
+      valuationData.push({
+        drugId: stock.drugId,
+        batchNumber: stock.batchNumber,
+        quantity,
+        allocatedQuantity: Number(stock.allocatedQuantity),
+        availableQuantity: quantity - Number(stock.allocatedQuantity),
+        costPrice,
+        sellingPrice,
+        stockValue,
+        potentialRevenue,
+        potentialProfit,
+        profitMargin: stockValue > 0 ? (potentialProfit / stockValue) * 100 : 0,
+        expiryDate: stock.expiryDate,
+        isExpiringSoon: stock.isExpiringSoon,
+      });
+    }
+
+    return {
+      pharmacyId,
+      totalStockValue,
+      totalPotentialRevenue: valuationData.reduce(
+        (sum, item) => sum + item.potentialRevenue,
+        0,
+      ),
+      totalPotentialProfit: valuationData.reduce(
+        (sum, item) => sum + item.potentialProfit,
+        0,
+      ),
+      averageProfitMargin:
+        totalStockValue > 0
+          ? (valuationData.reduce((sum, item) => sum + item.potentialProfit, 0) /
+              totalStockValue) *
+            100
+          : 0,
+      items: valuationData,
+      generatedAt: new Date(),
+    };
   }
 }
