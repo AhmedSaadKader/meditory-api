@@ -15,6 +15,8 @@ import { Drug } from '../../drugs/entities/drug.entity';
 import { DispenseStockDto } from '../dto/dispense-stock.dto';
 import { AdjustStockDto } from '../dto/adjust-stock.dto';
 import { TransferStockDto } from '../dto/transfer-stock.dto';
+import { AllocateStockDto } from '../dto/allocate-stock.dto';
+import { ReleaseStockDto } from '../dto/release-stock.dto';
 
 @Injectable()
 export class StockService {
@@ -512,6 +514,166 @@ export class StockService {
         message: `Transferred ${dto.quantity} units from ${dto.fromPharmacyId} to ${dto.toPharmacyId}`,
         transferOut: transferOutMovement,
         transferIn: transferInMovement,
+      };
+    });
+  }
+
+  async allocateStock(dto: AllocateStockDto, userId: number) {
+    return await this.dataSource.transaction(async (manager) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 1. Find available batches using FEFO with pessimistic locking
+      const availableBatches = await manager
+        .createQueryBuilder(PharmacyStock, 'stock')
+        .setLock('pessimistic_write')
+        .where('stock.pharmacyId = :pharmacyId', { pharmacyId: dto.pharmacyId })
+        .andWhere('stock.drugId = :drugId', { drugId: dto.drugId })
+        .andWhere('stock.isQuarantined = false')
+        .andWhere('stock.expiryDate >= :today', { today })
+        .andWhere('stock.quantity > stock.allocatedQuantity')
+        .orderBy('stock.expiryDate', 'ASC')
+        .getMany();
+
+      if (availableBatches.length === 0) {
+        throw new NotFoundException(
+          `No available stock found for drug ${dto.drugId} in pharmacy ${dto.pharmacyId}`,
+        );
+      }
+
+      // 2. Calculate total available (unallocated) stock
+      const totalAvailable = availableBatches.reduce(
+        (sum, batch) =>
+          sum + (Number(batch.quantity) - Number(batch.allocatedQuantity)),
+        0,
+      );
+
+      if (totalAvailable < dto.quantity) {
+        throw new BadRequestException(
+          `Insufficient unallocated stock. Requested: ${dto.quantity}, Available: ${totalAvailable}`,
+        );
+      }
+
+      // 3. Allocate from batches in FEFO order
+      let remainingQty = dto.quantity;
+      const movements: StockMovement[] = [];
+
+      for (const batch of availableBatches) {
+        if (remainingQty <= 0) break;
+
+        const availableInBatch =
+          Number(batch.quantity) - Number(batch.allocatedQuantity);
+        const qtyToAllocate = Math.min(remainingQty, availableInBatch);
+
+        // Update allocated quantity
+        batch.allocatedQuantity =
+          Number(batch.allocatedQuantity) + qtyToAllocate;
+        await manager.save(PharmacyStock, batch);
+
+        // Create allocation movement (doesn't change quantity, only allocatedQuantity)
+        const movement = manager.create(StockMovement, {
+          type: StockMovementType.ALLOCATION,
+          pharmacyId: dto.pharmacyId,
+          drugId: dto.drugId,
+          batchNumber: batch.batchNumber,
+          quantity: 0, // Allocation doesn't change physical quantity
+          balanceAfter: Number(batch.quantity),
+          referenceType: dto.referenceType,
+          referenceNumber: dto.referenceNumber,
+          userId,
+          notes: dto.notes,
+          metadata: {
+            allocatedQuantity: qtyToAllocate,
+            expiryDate: batch.expiryDate,
+          },
+        });
+
+        await manager.save(StockMovement, movement);
+        movements.push(movement);
+
+        remainingQty -= qtyToAllocate;
+      }
+
+      return {
+        success: true,
+        message: `Allocated ${dto.quantity} units successfully`,
+        movements,
+      };
+    });
+  }
+
+  async releaseStock(dto: ReleaseStockDto, userId: number) {
+    return await this.dataSource.transaction(async (manager) => {
+      // 1. Find allocated batches with pessimistic locking
+      const allocatedBatches = await manager
+        .createQueryBuilder(PharmacyStock, 'stock')
+        .setLock('pessimistic_write')
+        .where('stock.pharmacyId = :pharmacyId', { pharmacyId: dto.pharmacyId })
+        .andWhere('stock.drugId = :drugId', { drugId: dto.drugId })
+        .andWhere('stock.allocatedQuantity > 0')
+        .orderBy('stock.expiryDate', 'ASC')
+        .getMany();
+
+      if (allocatedBatches.length === 0) {
+        throw new NotFoundException(
+          `No allocated stock found for drug ${dto.drugId} in pharmacy ${dto.pharmacyId}`,
+        );
+      }
+
+      // 2. Calculate total allocated stock
+      const totalAllocated = allocatedBatches.reduce(
+        (sum, batch) => sum + Number(batch.allocatedQuantity),
+        0,
+      );
+
+      if (totalAllocated < dto.quantity) {
+        throw new BadRequestException(
+          `Insufficient allocated stock. Requested release: ${dto.quantity}, Total allocated: ${totalAllocated}`,
+        );
+      }
+
+      // 3. Release from batches in FEFO order
+      let remainingQty = dto.quantity;
+      const movements: StockMovement[] = [];
+
+      for (const batch of allocatedBatches) {
+        if (remainingQty <= 0) break;
+
+        const allocatedInBatch = Number(batch.allocatedQuantity);
+        const qtyToRelease = Math.min(remainingQty, allocatedInBatch);
+
+        // Update allocated quantity
+        batch.allocatedQuantity = allocatedInBatch - qtyToRelease;
+        await manager.save(PharmacyStock, batch);
+
+        // Create release movement
+        const movement = manager.create(StockMovement, {
+          type: StockMovementType.RELEASE,
+          pharmacyId: dto.pharmacyId,
+          drugId: dto.drugId,
+          batchNumber: batch.batchNumber,
+          quantity: 0, // Release doesn't change physical quantity
+          balanceAfter: Number(batch.quantity),
+          referenceType: dto.referenceType,
+          referenceNumber: dto.referenceNumber,
+          userId,
+          notes: dto.reason,
+          metadata: {
+            releasedQuantity: qtyToRelease,
+            expiryDate: batch.expiryDate,
+          },
+        });
+
+        await manager.save(StockMovement, movement);
+        movements.push(movement);
+
+        remainingQty -= qtyToRelease;
+      }
+
+      return {
+        success: true,
+        message: `Released ${dto.quantity} units successfully`,
+        movements,
       };
     });
   }

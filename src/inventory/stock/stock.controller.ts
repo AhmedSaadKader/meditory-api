@@ -17,6 +17,8 @@ import { ReceiveStockDto } from '../dto/receive-stock.dto';
 import { DispenseStockDto } from '../dto/dispense-stock.dto';
 import { AdjustStockDto } from '../dto/adjust-stock.dto';
 import { TransferStockDto } from '../dto/transfer-stock.dto';
+import { AllocateStockDto } from '../dto/allocate-stock.dto';
+import { ReleaseStockDto } from '../dto/release-stock.dto';
 
 @ApiTags('Stock Management')
 @Controller('stock')
@@ -135,5 +137,31 @@ export class StockController {
       throw new UnauthorizedException('User ID not found in session');
     }
     return this.stockService.transferStock(dto, ctx.activeUserId);
+  }
+
+  @Post('allocate')
+  @Allow(Permission.UpdateInventory)
+  @ApiOperation({ summary: 'Allocate stock (reserve for pending prescriptions)' })
+  @ApiResponse({ status: 201, description: 'Stock allocated successfully' })
+  @ApiResponse({ status: 404, description: 'No available stock found' })
+  @ApiResponse({ status: 400, description: 'Insufficient unallocated stock' })
+  allocateStock(@Body() dto: AllocateStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.allocateStock(dto, ctx.activeUserId);
+  }
+
+  @Post('release')
+  @Allow(Permission.UpdateInventory)
+  @ApiOperation({ summary: 'Release allocated stock (cancel reservation)' })
+  @ApiResponse({ status: 201, description: 'Stock released successfully' })
+  @ApiResponse({ status: 404, description: 'No allocated stock found' })
+  @ApiResponse({ status: 400, description: 'Insufficient allocated stock' })
+  releaseStock(@Body() dto: ReleaseStockDto, @Ctx() ctx: RequestContext) {
+    if (!ctx.activeUserId) {
+      throw new UnauthorizedException('User ID not found in session');
+    }
+    return this.stockService.releaseStock(dto, ctx.activeUserId);
   }
 }
