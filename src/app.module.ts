@@ -33,6 +33,10 @@ import { SalesPurchaseModule } from './sales-purchase/sales-purchase.module';
 // Sales-Purchase entities
 import { Supplier } from './sales-purchase/entities/supplier.entity';
 import { Customer } from './sales-purchase/entities/customer.entity';
+import {
+  PurchaseOrder,
+  PurchaseOrderItem,
+} from './sales-purchase/entities/purchase-order.entity';
 
 @Module({
   imports: [
@@ -68,6 +72,8 @@ import { Customer } from './sales-purchase/entities/customer.entity';
             StockMovement,
             Supplier,
             Customer,
+            PurchaseOrder,
+            PurchaseOrderItem,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
           ...(useSSL && {
