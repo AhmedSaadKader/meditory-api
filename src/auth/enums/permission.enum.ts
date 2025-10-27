@@ -39,4 +39,42 @@ export enum Permission {
   ReadOrder = 'ReadOrder',
   CreateOrder = 'CreateOrder',
   UpdateOrder = 'UpdateOrder',
+
+  // Suppliers
+  CreateSupplier = 'CreateSupplier',
+  ReadSupplier = 'ReadSupplier',
+  UpdateSupplier = 'UpdateSupplier',
+  DeleteSupplier = 'DeleteSupplier',
+
+  // Customers
+  CreateCustomer = 'CreateCustomer',
+  ReadCustomer = 'ReadCustomer',
+  UpdateCustomer = 'UpdateCustomer',
+  DeleteCustomer = 'DeleteCustomer',
+
+  // Purchase Orders
+  CreatePurchaseOrder = 'CreatePurchaseOrder',
+  ReadPurchaseOrder = 'ReadPurchaseOrder',
+  UpdatePurchaseOrder = 'UpdatePurchaseOrder',
+  DeletePurchaseOrder = 'DeletePurchaseOrder',
+  ApprovePurchaseOrder = 'ApprovePurchaseOrder',
+
+  // Purchase Receipts
+  CreatePurchaseReceipt = 'CreatePurchaseReceipt',
+  ReadPurchaseReceipt = 'ReadPurchaseReceipt',
+  UpdatePurchaseReceipt = 'UpdatePurchaseReceipt',
+  DeletePurchaseReceipt = 'DeletePurchaseReceipt',
+
+  // Purchase Invoices
+  CreatePurchaseInvoice = 'CreatePurchaseInvoice',
+  ReadPurchaseInvoice = 'ReadPurchaseInvoice',
+  UpdatePurchaseInvoice = 'UpdatePurchaseInvoice',
+  DeletePurchaseInvoice = 'DeletePurchaseInvoice',
+
+  // Sales Invoices
+  CreateSalesInvoice = 'CreateSalesInvoice',
+  ReadSalesInvoice = 'ReadSalesInvoice',
+  UpdateSalesInvoice = 'UpdateSalesInvoice',
+  DeleteSalesInvoice = 'DeleteSalesInvoice',
+  CompleteSalesInvoice = 'CompleteSalesInvoice',
 }

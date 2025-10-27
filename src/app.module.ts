@@ -28,6 +28,11 @@ import { InventoryModule } from './inventory/inventory.module';
 import { Pharmacy } from './inventory/entities/pharmacy.entity';
 import { PharmacyStock } from './inventory/entities/pharmacy-stock.entity';
 import { StockMovement } from './inventory/entities/stock-movement.entity';
+import { SalesPurchaseModule } from './sales-purchase/sales-purchase.module';
+
+// Sales-Purchase entities
+import { Supplier } from './sales-purchase/entities/supplier.entity';
+import { Customer } from './sales-purchase/entities/customer.entity';
 
 @Module({
   imports: [
@@ -61,6 +66,8 @@ import { StockMovement } from './inventory/entities/stock-movement.entity';
             Pharmacy,
             PharmacyStock,
             StockMovement,
+            Supplier,
+            Customer,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
           ...(useSSL && {
@@ -79,6 +86,7 @@ import { StockMovement } from './inventory/entities/stock-movement.entity';
     DrugsModule,
     AuthModule,
     InventoryModule,
+    SalesPurchaseModule,
   ],
   controllers: [AppController],
   providers: [
