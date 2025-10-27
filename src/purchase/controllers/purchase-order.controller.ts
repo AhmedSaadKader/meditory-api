@@ -6,69 +6,66 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
-  Request,
 } from '@nestjs/common';
 import { PurchaseOrderService } from '../services/purchase-order.service';
 import { CreatePurchaseOrderDto } from '../dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from '../dto/update-purchase-order.dto';
 import { UpdatePurchaseOrderStatusDto } from '../dto/update-purchase-order-status.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+import { Allow } from '../../auth/decorators/allow.decorator';
+import { Ctx } from '../../auth/decorators/ctx.decorator';
 import { Permission } from '../../auth/enums/permission.enum';
+import { RequestContext } from '../../auth/types/request-context';
 
 @Controller('purchase-orders')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PurchaseOrderController {
   constructor(private readonly purchaseOrderService: PurchaseOrderService) {}
 
   @Post()
-  @RequirePermissions(Permission.CreatePurchaseOrder)
-  create(@Request() req, @Body() dto: CreatePurchaseOrderDto) {
-    return this.purchaseOrderService.create(req.user.organizationId, dto);
+  @Allow(Permission.CreatePurchaseOrder)
+  create(@Body() dto: CreatePurchaseOrderDto, @Ctx() ctx: RequestContext) {
+    return this.purchaseOrderService.create(ctx.activeOrganizationId!, dto);
   }
 
   @Get()
-  @RequirePermissions(Permission.ReadPurchaseOrder)
-  findAll(@Request() req) {
-    return this.purchaseOrderService.findAll(req.user.organizationId);
+  @Allow(Permission.ReadPurchaseOrder)
+  findAll(@Ctx() ctx: RequestContext) {
+    return this.purchaseOrderService.findAll(ctx.activeOrganizationId!);
   }
 
   @Get(':id')
-  @RequirePermissions(Permission.ReadPurchaseOrder)
-  findOne(@Request() req, @Param('id') id: string) {
-    return this.purchaseOrderService.findOne(req.user.organizationId, id);
+  @Allow(Permission.ReadPurchaseOrder)
+  findOne(@Param('id') id: string, @Ctx() ctx: RequestContext) {
+    return this.purchaseOrderService.findOne(ctx.activeOrganizationId!, id);
   }
 
   @Patch(':id')
-  @RequirePermissions(Permission.UpdatePurchaseOrder)
+  @Allow(Permission.UpdatePurchaseOrder)
   update(
-    @Request() req,
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseOrderDto,
+    @Ctx() ctx: RequestContext,
   ) {
-    return this.purchaseOrderService.update(req.user.organizationId, id, dto);
+    return this.purchaseOrderService.update(ctx.activeOrganizationId!, id, dto);
   }
 
   @Patch(':id/status')
-  @RequirePermissions(Permission.UpdatePurchaseOrder)
+  @Allow(Permission.UpdatePurchaseOrder)
   updateStatus(
-    @Request() req,
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseOrderStatusDto,
+    @Ctx() ctx: RequestContext,
   ) {
     return this.purchaseOrderService.updateStatus(
-      req.user.organizationId,
+      ctx.activeOrganizationId!,
       id,
-      req.user.sub,
+      String(ctx.activeUserId),
       dto,
     );
   }
 
   @Delete(':id')
-  @RequirePermissions(Permission.DeletePurchaseOrder)
-  remove(@Request() req, @Param('id') id: string) {
-    return this.purchaseOrderService.remove(req.user.organizationId, id);
+  @Allow(Permission.DeletePurchaseOrder)
+  remove(@Param('id') id: string, @Ctx() ctx: RequestContext) {
+    return this.purchaseOrderService.remove(ctx.activeOrganizationId!, id);
   }
 }

@@ -6,43 +6,39 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
 } from '@nestjs/common';
 import { SupplierService } from '../services/supplier.service';
 import { CreateSupplierDto } from '../dto/create-supplier.dto';
 import { UpdateSupplierDto } from '../dto/update-supplier.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Allow } from '../../auth/decorators/allow.decorator';
 import { Permission } from '../../auth/enums/permission.enum';
-import { Ctx } from '../../auth/decorators/request-context.decorator';
+import { Ctx } from '../../auth/decorators/ctx.decorator';
 import { RequestContext } from '../../auth/types/request-context';
 
 @Controller('suppliers')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 
   @Post()
-  @Permissions(Permission.CreateSupplier)
+  @Allow(Permission.CreateSupplier)
   create(@Body() createSupplierDto: CreateSupplierDto, @Ctx() ctx: RequestContext) {
     return this.supplierService.create(createSupplierDto, ctx);
   }
 
   @Get()
-  @Permissions(Permission.ReadSupplier)
+  @Allow(Permission.ReadSupplier)
   findAll(@Ctx() ctx: RequestContext) {
     return this.supplierService.findAll(ctx);
   }
 
   @Get(':id')
-  @Permissions(Permission.ReadSupplier)
+  @Allow(Permission.ReadSupplier)
   findOne(@Param('id') id: string, @Ctx() ctx: RequestContext) {
     return this.supplierService.findOne(id, ctx);
   }
 
   @Patch(':id')
-  @Permissions(Permission.UpdateSupplier)
+  @Allow(Permission.UpdateSupplier)
   update(
     @Param('id') id: string,
     @Body() updateSupplierDto: UpdateSupplierDto,
@@ -52,7 +48,7 @@ export class SupplierController {
   }
 
   @Delete(':id')
-  @Permissions(Permission.DeleteSupplier)
+  @Allow(Permission.DeleteSupplier)
   remove(@Param('id') id: string, @Ctx() ctx: RequestContext) {
     return this.supplierService.remove(id, ctx);
   }

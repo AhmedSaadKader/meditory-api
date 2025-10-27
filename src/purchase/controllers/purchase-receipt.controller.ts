@@ -6,60 +6,57 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
-  Request,
 } from '@nestjs/common';
 import { PurchaseReceiptService } from '../services/purchase-receipt.service';
 import { CreatePurchaseReceiptDto } from '../dto/create-purchase-receipt.dto';
 import { UpdatePurchaseReceiptStatusDto } from '../dto/update-purchase-receipt-status.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+import { Allow } from '../../auth/decorators/allow.decorator';
+import { Ctx } from '../../auth/decorators/ctx.decorator';
 import { Permission } from '../../auth/enums/permission.enum';
+import { RequestContext } from '../../auth/types/request-context';
 
 @Controller('purchase-receipts')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PurchaseReceiptController {
   constructor(
     private readonly purchaseReceiptService: PurchaseReceiptService,
   ) {}
 
   @Post()
-  @RequirePermissions(Permission.CreatePurchaseReceipt)
-  create(@Request() req, @Body() dto: CreatePurchaseReceiptDto) {
-    return this.purchaseReceiptService.create(req.user.organizationId, dto);
+  @Allow(Permission.CreatePurchaseReceipt)
+  create(@Body() dto: CreatePurchaseReceiptDto, @Ctx() ctx: RequestContext) {
+    return this.purchaseReceiptService.create(ctx.activeOrganizationId!, dto);
   }
 
   @Get()
-  @RequirePermissions(Permission.ReadPurchaseReceipt)
-  findAll(@Request() req) {
-    return this.purchaseReceiptService.findAll(req.user.organizationId);
+  @Allow(Permission.ReadPurchaseReceipt)
+  findAll(@Ctx() ctx: RequestContext) {
+    return this.purchaseReceiptService.findAll(ctx.activeOrganizationId!);
   }
 
   @Get(':id')
-  @RequirePermissions(Permission.ReadPurchaseReceipt)
-  findOne(@Request() req, @Param('id') id: string) {
-    return this.purchaseReceiptService.findOne(req.user.organizationId, id);
+  @Allow(Permission.ReadPurchaseReceipt)
+  findOne(@Param('id') id: string, @Ctx() ctx: RequestContext) {
+    return this.purchaseReceiptService.findOne(ctx.activeOrganizationId!, id);
   }
 
   @Patch(':id/status')
-  @RequirePermissions(Permission.UpdatePurchaseReceipt)
+  @Allow(Permission.UpdatePurchaseReceipt)
   updateStatus(
-    @Request() req,
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseReceiptStatusDto,
+    @Ctx() ctx: RequestContext,
   ) {
     return this.purchaseReceiptService.updateStatus(
-      req.user.organizationId,
+      ctx.activeOrganizationId!,
       id,
-      req.user.sub,
+      ctx.activeUserId!,
       dto,
     );
   }
 
   @Delete(':id')
-  @RequirePermissions(Permission.DeletePurchaseReceipt)
-  remove(@Request() req, @Param('id') id: string) {
-    return this.purchaseReceiptService.remove(req.user.organizationId, id);
+  @Allow(Permission.DeletePurchaseReceipt)
+  remove(@Param('id') id: string, @Ctx() ctx: RequestContext) {
+    return this.purchaseReceiptService.remove(ctx.activeOrganizationId!, id);
   }
 }
