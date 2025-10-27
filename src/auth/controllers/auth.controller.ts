@@ -39,7 +39,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Login',
     description:
-      'Authenticate user with username and password. Returns user data and session token.',
+      'Authenticate user with organization code, username and password. Returns user data and session token.',
   })
   @ApiResponse({
     status: 200,
@@ -58,10 +58,11 @@ export class AuthController {
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials',
+    description: 'Invalid credentials or organization',
   })
   async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     const result = await this.authService.authenticate(
+      loginDto.organizationCode,
       loginDto.username,
       loginDto.password,
       req.ip,

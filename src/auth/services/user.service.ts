@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { SessionService } from './session.service';
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { PasswordCipherService } from './password-cipher.service';
+import { RequestContext } from '../types/request-context';
 
 @Injectable()
 export class UserService {
@@ -18,12 +19,30 @@ export class UserService {
   ) {}
 
   /**
-   * Find user by ID (filters deleted users)
+   * Find user by ID (filters deleted users and organization)
    */
-  async findById(userId: number): Promise<User | null> {
+  async findById(userId: number, ctx: RequestContext): Promise<User | null> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can access all users
+    if (ctx.isPlatformSuperAdmin()) {
+      return this.userRepository.findOne({
+        where: {
+          userId,
+          deletedAt: IsNull(),
+        },
+        relations: ['roles', 'authenticationMethods', 'organization'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
     return this.userRepository.findOne({
       where: {
         userId,
+        organizationId,
         deletedAt: IsNull(),
       },
       relations: ['roles', 'authenticationMethods'],
@@ -31,12 +50,30 @@ export class UserService {
   }
 
   /**
-   * Find user by username (filters deleted users)
+   * Find user by username within organization (filters deleted users)
    */
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string, ctx: RequestContext): Promise<User | null> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can access all users
+    if (ctx.isPlatformSuperAdmin()) {
+      return this.userRepository.findOne({
+        where: {
+          username,
+          deletedAt: IsNull(),
+        },
+        relations: ['roles', 'authenticationMethods', 'organization'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
     return this.userRepository.findOne({
       where: {
         username,
+        organizationId,
         deletedAt: IsNull(),
       },
       relations: ['roles', 'authenticationMethods'],
@@ -44,17 +81,41 @@ export class UserService {
   }
 
   /**
-   * Find all users (filters deleted users by default)
+   * Find all users (filters deleted users by default and scoped by organization)
    */
-  async findAll(includeDeleted = false): Promise<User[]> {
+  async findAll(ctx: RequestContext, includeDeleted = false): Promise<User[]> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can see all users
+    if (ctx.isPlatformSuperAdmin()) {
+      if (includeDeleted) {
+        return this.userRepository.find({
+          relations: ['roles', 'organization'],
+        });
+      }
+
+      return this.userRepository.find({
+        where: {
+          deletedAt: IsNull(),
+        },
+        relations: ['roles', 'organization'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
     if (includeDeleted) {
       return this.userRepository.find({
+        where: { organizationId },
         relations: ['roles'],
       });
     }
 
     return this.userRepository.find({
       where: {
+        organizationId,
         deletedAt: IsNull(),
       },
       relations: ['roles'],

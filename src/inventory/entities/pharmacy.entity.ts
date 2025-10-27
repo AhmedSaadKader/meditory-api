@@ -4,12 +4,26 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
+import { Organization } from '../../auth/entities/organization.entity';
 
 @Entity({ schema: 'operational', name: 'pharmacies' })
 export class Pharmacy {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Organization, (organization) => organization.pharmacies, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
+
+  @Column({ name: 'organization_id' })
+  @Index()
+  organizationId: string;
 
   @Column()
   name: string;

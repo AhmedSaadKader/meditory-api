@@ -15,6 +15,8 @@ export interface CachedSession {
     userId: number;
     username: string;
     verified: boolean;
+    organizationId: string | null;
+    pharmacyIds: string[];
     permissions: string[];
   };
   authenticationStrategy: string;
@@ -184,6 +186,7 @@ export class SessionService {
       .createQueryBuilder('session')
       .leftJoinAndSelect('session.user', 'user')
       .leftJoinAndSelect('user.roles', 'roles')
+      .leftJoinAndSelect('roles.pharmacies', 'pharmacies')
       .where('session.token = :token', { token })
       .andWhere('session.invalidated_at IS NULL')
       .andWhere('user.deleted_at IS NULL')
@@ -204,9 +207,22 @@ export class SessionService {
 
     // Collect all permissions from user's roles
     const permissions = new Set<string>();
+    const pharmacyIds = new Set<string>();
+
     for (const role of user.roles || []) {
+      // Collect permissions
       for (const permission of role.permissions) {
         permissions.add(permission);
+      }
+
+      // Collect pharmacy IDs from role
+      if (role.pharmacies && role.pharmacies.length > 0) {
+        for (const pharmacy of role.pharmacies) {
+          // Safety check: only add pharmacies from user's organization
+          if (user.organizationId && pharmacy.organizationId === user.organizationId) {
+            pharmacyIds.add(pharmacy.id);
+          }
+        }
       }
     }
 
@@ -220,6 +236,8 @@ export class SessionService {
         userId: user.userId,
         username: user.username,
         verified: user.verified,
+        organizationId: user.organizationId,
+        pharmacyIds: Array.from(pharmacyIds),
         permissions: Array.from(permissions),
       },
     };

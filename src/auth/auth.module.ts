@@ -10,6 +10,7 @@ import { Session } from './entities/session.entity';
 import { Role } from './entities/role.entity';
 import { UserRole } from './entities/user-role.entity';
 import { AuditLog } from './entities/audit-log.entity';
+import { Organization } from './entities/organization.entity';
 
 // Services
 import { PasswordCipherService } from './services/password-cipher.service';
@@ -17,6 +18,7 @@ import { SessionService } from './services/session.service';
 import { AuthService } from './services/auth.service';
 import { UserService } from './services/user.service';
 import { RoleService } from './services/role.service';
+import { OrganizationService } from './services/organization.service';
 
 // Strategies
 import { NativeAuthenticationStrategy } from './strategies/native-authentication.strategy';
@@ -30,6 +32,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
 import { RoleController } from './controllers/role.controller';
+import { OrganizationController } from './controllers/organization.controller';
 
 @Module({
   imports: [
@@ -42,6 +45,7 @@ import { RoleController } from './controllers/role.controller';
       Role,
       UserRole,
       AuditLog,
+      Organization,
     ]),
   ],
   providers: [
@@ -64,6 +68,7 @@ import { RoleController } from './controllers/role.controller';
     AuthService,
     UserService,
     RoleService,
+    OrganizationService,
 
     // Strategies
     NativeAuthenticationStrategy,
@@ -71,7 +76,7 @@ import { RoleController } from './controllers/role.controller';
     // Guards
     AuthGuard,
   ],
-  controllers: [AuthController, UserController, RoleController],
-  exports: [AuthService, SessionService, UserService, RoleService, AuthGuard],
+  controllers: [AuthController, UserController, RoleController, OrganizationController],
+  exports: [AuthService, SessionService, UserService, RoleService, OrganizationService, AuthGuard],
 })
 export class AuthModule {}

@@ -5,16 +5,31 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
 import { AuthenticationMethod } from './authentication-method.entity';
 import { Session } from './session.entity';
 import { Role } from './role.entity';
 import { NativeAuthenticationMethod } from './native-authentication-method.entity';
+import { Organization } from './organization.entity';
 
 @Entity({ schema: 'operational', name: 'users' })
 export class User {
   @PrimaryGeneratedColumn({ name: 'user_id' })
   userId: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.users, {
+    onDelete: 'CASCADE',
+    nullable: true, // Platform SuperAdmin has no organization
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
+
+  @Column({ name: 'organization_id', nullable: true })
+  @Index()
+  organizationId: string | null;
 
   @Column({ name: 'username', unique: true })
   username: string;

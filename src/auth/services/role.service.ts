@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import { Role } from '../entities/role.entity';
 import { Permission } from '../enums/permission.enum';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
+import { RequestContext } from '../types/request-context';
 
 @Injectable()
 export class RoleService {
@@ -25,42 +27,93 @@ export class RoleService {
   ) {}
 
   /**
-   * Find all roles
+   * Find all roles (scoped by organization)
    */
-  async findAll(): Promise<Role[]> {
-    return this.roleRepository.find();
-  }
+  async findAll(ctx: RequestContext): Promise<Role[]> {
+    const organizationId = ctx.activeOrganizationId;
 
-  /**
-   * Find role by ID
-   */
-  async findById(roleId: number): Promise<Role | null> {
-    return this.roleRepository.findOne({
-      where: { roleId },
+    // Platform SuperAdmin can see all roles
+    if (ctx.isPlatformSuperAdmin()) {
+      return this.roleRepository.find({
+        relations: ['organization'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
+    return this.roleRepository.find({
+      where: { organizationId },
+      relations: ['pharmacies'],
     });
   }
 
   /**
-   * Find role by code
+   * Find role by ID (scoped by organization)
    */
-  async findByCode(code: string): Promise<Role | null> {
+  async findById(roleId: number, ctx: RequestContext): Promise<Role | null> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can access all roles
+    if (ctx.isPlatformSuperAdmin()) {
+      return this.roleRepository.findOne({
+        where: { roleId },
+        relations: ['organization', 'pharmacies'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
     return this.roleRepository.findOne({
-      where: { code },
+      where: { roleId, organizationId },
+      relations: ['pharmacies'],
     });
   }
 
   /**
-   * Create a new role (following Vendure pattern)
+   * Find role by code within organization
    */
-  async create(createRoleDto: CreateRoleDto): Promise<Role> {
+  async findByCode(code: string, ctx: RequestContext): Promise<Role | null> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can access all roles
+    if (ctx.isPlatformSuperAdmin()) {
+      return this.roleRepository.findOne({
+        where: { code },
+        relations: ['organization'],
+      });
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
+    return this.roleRepository.findOne({
+      where: { code, organizationId },
+    });
+  }
+
+  /**
+   * Create a new role (following Vendure pattern, scoped by organization)
+   */
+  async create(createRoleDto: CreateRoleDto, ctx: RequestContext): Promise<Role> {
+    const organizationId = ctx.activeOrganizationId;
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
     // Validate permissions
     this.validatePermissions(createRoleDto.permissions);
 
-    // Ensure unique code
-    const existing = await this.findByCode(createRoleDto.code);
+    // Ensure unique code within organization
+    const existing = await this.findByCode(createRoleDto.code, ctx);
     if (existing) {
       throw new BadRequestException(
-        `Role with code '${createRoleDto.code}' already exists`,
+        `Role with code '${createRoleDto.code}' already exists in your organization`,
       );
     }
 
@@ -72,6 +125,7 @@ export class RoleService {
 
     const role = this.roleRepository.create({
       ...createRoleDto,
+      organizationId,
       permissions,
       isSystem: false, // New roles are never system roles
     });
@@ -80,10 +134,10 @@ export class RoleService {
   }
 
   /**
-   * Update role (following Vendure pattern)
+   * Update role (following Vendure pattern, scoped by organization)
    */
-  async update(roleId: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
-    const role = await this.findById(roleId);
+  async update(roleId: number, updateRoleDto: UpdateRoleDto, ctx: RequestContext): Promise<Role> {
+    const role = await this.findById(roleId, ctx);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
@@ -121,10 +175,10 @@ export class RoleService {
   }
 
   /**
-   * Delete role (prevents deletion of system roles - Vendure pattern)
+   * Delete role (prevents deletion of system roles - Vendure pattern, scoped by organization)
    */
-  async delete(roleId: number): Promise<void> {
-    const role = await this.findById(roleId);
+  async delete(roleId: number, ctx: RequestContext): Promise<void> {
+    const role = await this.findById(roleId, ctx);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }

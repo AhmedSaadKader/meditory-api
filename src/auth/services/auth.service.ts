@@ -8,12 +8,15 @@ import { NativeAuthenticationStrategy } from '../strategies/native-authenticatio
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { PasswordCipherService } from './password-cipher.service';
 import { Role } from '../entities/role.entity';
+import { Organization } from '../entities/organization.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Organization)
+    private organizationRepository: Repository<Organization>,
     private sessionService: SessionService,
     private nativeAuthStrategy: NativeAuthenticationStrategy,
     private passwordCipher: PasswordCipherService,
@@ -21,20 +24,50 @@ export class AuthService {
   ) {}
 
   /**
-   * Authenticate user with username and password
+   * Authenticate user with username, password, and organization code
    */
   async authenticate(
+    organizationCode: string,
     username: string,
     password: string,
     ipAddress?: string,
     userAgent?: string,
   ): Promise<Session | { error: string }> {
-    const user = await this.nativeAuthStrategy.authenticate({
-      username,
-      password,
+    // Step 1: Find organization
+    const organization = await this.organizationRepository.findOne({
+      where: { code: organizationCode, isActive: true },
+    });
+
+    if (!organization) {
+      return { error: 'Invalid organization or credentials' };
+    }
+
+    // Step 2: Find user in that organization
+    const user = await this.userRepository.findOne({
+      where: {
+        username,
+        organizationId: organization.id,
+        deletedAt: IsNull(),
+      },
+      relations: ['roles', 'roles.pharmacies'],
     });
 
     if (!user) {
+      return { error: 'Invalid organization or credentials' };
+    }
+
+    // Step 3: Validate password
+    const nativeAuth = user.getNativeAuthenticationMethod();
+    if (!nativeAuth) {
+      return { error: 'Invalid credentials' };
+    }
+
+    const isValid = await this.passwordCipher.check(
+      password,
+      nativeAuth.passwordHash,
+    );
+
+    if (!isValid) {
       return { error: 'Invalid credentials' };
     }
 

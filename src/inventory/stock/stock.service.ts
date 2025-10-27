@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -10,6 +11,7 @@ import {
   StockMovement,
   StockMovementType,
 } from '../entities/stock-movement.entity';
+import { Pharmacy } from '../entities/pharmacy.entity';
 import { ReceiveStockDto } from '../dto/receive-stock.dto';
 import { Drug } from '../../drugs/entities/drug.entity';
 import { DispenseStockDto } from '../dto/dispense-stock.dto';
@@ -17,6 +19,7 @@ import { AdjustStockDto } from '../dto/adjust-stock.dto';
 import { TransferStockDto } from '../dto/transfer-stock.dto';
 import { AllocateStockDto } from '../dto/allocate-stock.dto';
 import { ReleaseStockDto } from '../dto/release-stock.dto';
+import { RequestContext } from '../../auth/types/request-context';
 
 @Injectable()
 export class StockService {
@@ -25,10 +28,52 @@ export class StockService {
     private pharmacyStockRepository: Repository<PharmacyStock>,
     @InjectRepository(StockMovement)
     private stockMovementRepository: Repository<StockMovement>,
+    @InjectRepository(Pharmacy)
+    private pharmacyRepository: Repository<Pharmacy>,
     private dataSource: DataSource,
   ) {}
 
-  async receiveStock(dto: ReceiveStockDto, userId: number) {
+  /**
+   * Verify user has access to pharmacy and it belongs to their organization
+   */
+  private async verifyPharmacyAccess(
+    pharmacyId: string,
+    ctx: RequestContext,
+  ): Promise<void> {
+    const organizationId = ctx.activeOrganizationId;
+
+    // Platform SuperAdmin can access all pharmacies
+    if (ctx.isPlatformSuperAdmin()) {
+      return;
+    }
+
+    if (!organizationId) {
+      throw new ForbiddenException('Organization context required');
+    }
+
+    // Verify pharmacy exists and belongs to user's organization
+    const pharmacy = await this.pharmacyRepository.findOne({
+      where: { id: pharmacyId },
+    });
+
+    if (!pharmacy) {
+      throw new NotFoundException(`Pharmacy with ID ${pharmacyId} not found`);
+    }
+
+    if (pharmacy.organizationId !== organizationId) {
+      throw new ForbiddenException('No access to this pharmacy');
+    }
+
+    // Check if user has access to this specific pharmacy
+    if (!ctx.userHasAccessToPharmacy(pharmacyId)) {
+      throw new ForbiddenException('No access to this pharmacy');
+    }
+  }
+
+  async receiveStock(dto: ReceiveStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(dto.pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       // 1. Validate that drug exists and get reference data
       const drug = await manager.findOne(Drug, {
@@ -121,7 +166,10 @@ export class StockService {
     });
   }
 
-  async dispenseStock(dto: DispenseStockDto, userId: number) {
+  async dispenseStock(dto: DispenseStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(dto.pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -203,7 +251,10 @@ export class StockService {
     });
   }
 
-  async getStockLevelsByPharmacy(pharmacyId: string) {
+  async getStockLevelsByPharmacy(pharmacyId: string, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
     const stocks = await this.pharmacyStockRepository.find({
       where: { pharmacyId },
       order: { expiryDate: 'ASC' },
@@ -223,7 +274,10 @@ export class StockService {
     }));
   }
 
-  async getMovementHistory(pharmacyId: string, limit = 100) {
+  async getMovementHistory(pharmacyId: string, ctx: RequestContext, limit = 100) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
     return await this.stockMovementRepository.find({
       where: { pharmacyId },
       order: { createdAt: 'DESC' },
@@ -231,7 +285,10 @@ export class StockService {
     });
   }
 
-  async adjustStock(dto: AdjustStockDto, userId: number) {
+  async adjustStock(dto: AdjustStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(dto.pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       // 1. Find the stock batch
       const stock = await manager.findOne(PharmacyStock, {
@@ -299,7 +356,10 @@ export class StockService {
     });
   }
 
-  async getLowStockItems(pharmacyId: string) {
+  async getLowStockItems(pharmacyId: string, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
     const stocks = await this.pharmacyStockRepository
       .createQueryBuilder('stock')
       .where('stock.pharmacyId = :pharmacyId', { pharmacyId })
@@ -323,7 +383,10 @@ export class StockService {
     }));
   }
 
-  async getExpiringStock(pharmacyId: string, daysThreshold = 90) {
+  async getExpiringStock(pharmacyId: string, ctx: RequestContext, daysThreshold = 90) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -353,7 +416,10 @@ export class StockService {
     });
   }
 
-  async removeExpiredStock(pharmacyId: string, userId: number) {
+  async removeExpiredStock(pharmacyId: string, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -412,7 +478,11 @@ export class StockService {
     });
   }
 
-  async transferStock(dto: TransferStockDto, userId: number) {
+  async transferStock(dto: TransferStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access for both source and destination
+    await this.verifyPharmacyAccess(dto.fromPharmacyId, ctx);
+    await this.verifyPharmacyAccess(dto.toPharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       // 1. Find source stock
       const sourceStock = await manager.findOne(PharmacyStock, {
@@ -518,7 +588,10 @@ export class StockService {
     });
   }
 
-  async allocateStock(dto: AllocateStockDto, userId: number) {
+  async allocateStock(dto: AllocateStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(dto.pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -602,7 +675,10 @@ export class StockService {
     });
   }
 
-  async releaseStock(dto: ReleaseStockDto, userId: number) {
+  async releaseStock(dto: ReleaseStockDto, userId: number, ctx: RequestContext) {
+    // Verify pharmacy access
+    await this.verifyPharmacyAccess(dto.pharmacyId, ctx);
+
     return await this.dataSource.transaction(async (manager) => {
       // 1. Find allocated batches with pessimistic locking
       const allocatedBatches = await manager

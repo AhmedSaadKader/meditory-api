@@ -4,13 +4,27 @@ import {
   PrimaryGeneratedColumn,
   ManyToMany,
   JoinTable,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
 import { Pharmacy } from '../../inventory/entities/pharmacy.entity';
+import { Organization } from './organization.entity';
 
 @Entity({ schema: 'operational', name: 'roles' })
 export class Role {
   @PrimaryGeneratedColumn({ name: 'role_id' })
   roleId: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.roles, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
+
+  @Column({ name: 'organization_id' })
+  @Index()
+  organizationId: string;
 
   @Column({ unique: true })
   code: string;

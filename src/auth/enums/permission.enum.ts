@@ -4,6 +4,7 @@ export enum Permission {
   Public = 'Public',
   Owner = 'Owner',
   SuperAdmin = 'SuperAdmin',
+  PlatformSuperAdmin = 'PlatformSuperAdmin',
 
   // Drug Management
   ReadDrug = 'ReadDrug',

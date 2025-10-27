@@ -33,7 +33,7 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.receiveStock(dto, ctx.activeUserId);
+    return this.stockService.receiveStock(dto, ctx.activeUserId, ctx);
   }
 
   @Post('dispense')
@@ -46,7 +46,7 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.dispenseStock(dto, ctx.activeUserId);
+    return this.stockService.dispenseStock(dto, ctx.activeUserId, ctx);
   }
 
   @Get('levels/:pharmacyId')
@@ -54,8 +54,8 @@ export class StockController {
   @ApiOperation({ summary: 'Get stock levels by pharmacy' })
   @ApiParam({ name: 'pharmacyId', type: 'string' })
   @ApiResponse({ status: 200, description: 'Returns stock levels' })
-  getStockLevels(@Param('pharmacyId') pharmacyId: string) {
-    return this.stockService.getStockLevelsByPharmacy(pharmacyId);
+  getStockLevels(@Param('pharmacyId') pharmacyId: string, @Ctx() ctx: RequestContext) {
+    return this.stockService.getStockLevelsByPharmacy(pharmacyId, ctx);
   }
 
   @Get('movements/:pharmacyId')
@@ -65,9 +65,10 @@ export class StockController {
   @ApiResponse({ status: 200, description: 'Returns movement history' })
   getMovementHistory(
     @Param('pharmacyId') pharmacyId: string,
+    @Ctx() ctx: RequestContext,
     @Query('limit') limit?: number,
   ) {
-    return this.stockService.getMovementHistory(pharmacyId, limit);
+    return this.stockService.getMovementHistory(pharmacyId, ctx, limit);
   }
 
   @Post('adjust')
@@ -83,7 +84,7 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.adjustStock(dto, ctx.activeUserId);
+    return this.stockService.adjustStock(dto, ctx.activeUserId, ctx);
   }
 
   @Get('low-stock/:pharmacyId')
@@ -91,8 +92,8 @@ export class StockController {
   @ApiOperation({ summary: 'Get low stock items (at or below minimum level)' })
   @ApiParam({ name: 'pharmacyId', type: 'string' })
   @ApiResponse({ status: 200, description: 'Returns low stock items' })
-  getLowStockItems(@Param('pharmacyId') pharmacyId: string) {
-    return this.stockService.getLowStockItems(pharmacyId);
+  getLowStockItems(@Param('pharmacyId') pharmacyId: string, @Ctx() ctx: RequestContext) {
+    return this.stockService.getLowStockItems(pharmacyId, ctx);
   }
 
   @Get('expiring/:pharmacyId')
@@ -102,9 +103,10 @@ export class StockController {
   @ApiResponse({ status: 200, description: 'Returns expiring stock' })
   getExpiringStock(
     @Param('pharmacyId') pharmacyId: string,
+    @Ctx() ctx: RequestContext,
     @Query('daysThreshold') daysThreshold?: number,
   ) {
-    return this.stockService.getExpiringStock(pharmacyId, daysThreshold);
+    return this.stockService.getExpiringStock(pharmacyId, ctx, daysThreshold);
   }
 
   @Post('remove-expired/:pharmacyId')
@@ -123,7 +125,7 @@ export class StockController {
     if (!userId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.removeExpiredStock(pharmacyId, userId);
+    return this.stockService.removeExpiredStock(pharmacyId, userId, ctx);
   }
 
   @Post('transfer')
@@ -136,7 +138,7 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.transferStock(dto, ctx.activeUserId);
+    return this.stockService.transferStock(dto, ctx.activeUserId, ctx);
   }
 
   @Post('allocate')
@@ -149,7 +151,7 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.allocateStock(dto, ctx.activeUserId);
+    return this.stockService.allocateStock(dto, ctx.activeUserId, ctx);
   }
 
   @Post('release')
@@ -162,6 +164,6 @@ export class StockController {
     if (!ctx.activeUserId) {
       throw new UnauthorizedException('User ID not found in session');
     }
-    return this.stockService.releaseStock(dto, ctx.activeUserId);
+    return this.stockService.releaseStock(dto, ctx.activeUserId, ctx);
   }
 }

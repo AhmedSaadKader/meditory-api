@@ -21,6 +21,7 @@ import { Session } from './auth/entities/session.entity';
 import { Role } from './auth/entities/role.entity';
 import { UserRole } from './auth/entities/user-role.entity';
 import { AuditLog } from './auth/entities/audit-log.entity';
+import { Organization } from './auth/entities/organization.entity';
 import { InventoryModule } from './inventory/inventory.module';
 
 // Inventory entities
@@ -56,6 +57,7 @@ import { StockMovement } from './inventory/entities/stock-movement.entity';
             Role,
             UserRole,
             AuditLog,
+            Organization,
             Pharmacy,
             PharmacyStock,
             StockMovement,
