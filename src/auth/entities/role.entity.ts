@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
+import { Pharmacy } from '../../inventory/entities/pharmacy.entity';
 
 @Entity({ schema: 'operational', name: 'roles' })
 export class Role {
@@ -19,6 +26,15 @@ export class Role {
 
   @Column({ name: 'is_system', default: false })
   isSystem: boolean;
+
+  @ManyToMany(() => Pharmacy)
+  @JoinTable({
+    name: 'role_pharmacies',
+    schema: 'operational',
+    joinColumn: { name: 'role_id', referencedColumnName: 'roleId' },
+    inverseJoinColumn: { name: 'pharmacy_id', referencedColumnName: 'id' },
+  })
+  pharmacies: Pharmacy[];
 
   @Column({
     name: 'created_at',
