@@ -4,6 +4,15 @@ export class CreateSupplierAndCustomerEntities1761561832097
   implements MigrationInterface
 {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create supplier_type enum (ERPNext field)
+    await queryRunner.query(`
+      CREATE TYPE "operational"."supplier_type" AS ENUM (
+        'COMPANY',
+        'INDIVIDUAL',
+        'PARTNERSHIP'
+      )
+    `);
+
     // Create suppliers table (ERPNext-inspired)
     await queryRunner.query(`
       CREATE TABLE "operational"."suppliers" (
@@ -15,6 +24,7 @@ export class CreateSupplierAndCustomerEntities1761561832097
         "phone" VARCHAR(50),
         "email" VARCHAR(100),
         "contact_person" VARCHAR(100),
+        "supplier_type" "operational"."supplier_type" NOT NULL DEFAULT 'COMPANY',
         "current_balance" DECIMAL(15,2) NOT NULL DEFAULT 0,
         "payment_terms" JSON,
         "is_active" BOOLEAN NOT NULL DEFAULT true,
@@ -109,7 +119,8 @@ export class CreateSupplierAndCustomerEntities1761561832097
     await queryRunner.query(`DROP TABLE IF EXISTS "operational"."customers" CASCADE`);
     await queryRunner.query(`DROP TABLE IF EXISTS "operational"."suppliers" CASCADE`);
 
-    // Drop enum
+    // Drop enums
     await queryRunner.query(`DROP TYPE IF EXISTS "operational"."customer_type"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "operational"."supplier_type"`);
   }
 }

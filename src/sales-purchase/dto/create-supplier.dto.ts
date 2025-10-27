@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsEmail, IsBoolean, IsNumber, Min, Max, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsBoolean, IsNumber, Min, Max, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SupplierType } from '../entities/supplier.entity';
 
 class PaymentTermsDto {
   @IsOptional()
@@ -41,6 +42,10 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsString()
   contactPerson?: string;
+
+  @IsOptional()
+  @IsEnum(SupplierType)
+  supplierType?: SupplierType;
 
   @IsOptional()
   @ValidateNested()

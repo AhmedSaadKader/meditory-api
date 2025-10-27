@@ -10,6 +10,12 @@ import {
 } from 'typeorm';
 import { Organization } from '../../auth/entities/organization.entity';
 
+export enum SupplierType {
+  COMPANY = 'COMPANY',
+  INDIVIDUAL = 'INDIVIDUAL',
+  PARTNERSHIP = 'PARTNERSHIP',
+}
+
 /**
  * Supplier entity (ERPNext-inspired)
  * Tracks suppliers for purchase orders
@@ -47,6 +53,15 @@ export class Supplier {
 
   @Column({ length: 100, nullable: true })
   contactPerson?: string;
+
+  // Supplier Type (ERPNext field)
+  @Column({
+    type: 'enum',
+    enum: SupplierType,
+    default: SupplierType.COMPANY,
+    name: 'supplier_type',
+  })
+  supplierType: SupplierType;
 
   // Financial
   @Column({
