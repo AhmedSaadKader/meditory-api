@@ -28,15 +28,22 @@ import { InventoryModule } from './inventory/inventory.module';
 import { Pharmacy } from './inventory/entities/pharmacy.entity';
 import { PharmacyStock } from './inventory/entities/pharmacy-stock.entity';
 import { StockMovement } from './inventory/entities/stock-movement.entity';
-import { SalesPurchaseModule } from './sales-purchase/sales-purchase.module';
+import { PurchaseModule } from './purchase/purchase.module';
+import { SalesModule } from './sales/sales.module';
 
-// Sales-Purchase entities
-import { Supplier } from './sales-purchase/entities/supplier.entity';
-import { Customer } from './sales-purchase/entities/customer.entity';
+// Purchase entities
+import { Supplier } from './purchase/entities/supplier.entity';
 import {
   PurchaseOrder,
   PurchaseOrderItem,
-} from './sales-purchase/entities/purchase-order.entity';
+} from './purchase/entities/purchase-order.entity';
+import {
+  PurchaseReceipt,
+  PurchaseReceiptItem,
+} from './purchase/entities/purchase-receipt.entity';
+
+// Sales entities
+import { Customer } from './sales/entities/customer.entity';
 
 @Module({
   imports: [
@@ -74,6 +81,8 @@ import {
             Customer,
             PurchaseOrder,
             PurchaseOrderItem,
+            PurchaseReceipt,
+            PurchaseReceiptItem,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
           ...(useSSL && {
@@ -92,7 +101,8 @@ import {
     DrugsModule,
     AuthModule,
     InventoryModule,
-    SalesPurchaseModule,
+    PurchaseModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [
