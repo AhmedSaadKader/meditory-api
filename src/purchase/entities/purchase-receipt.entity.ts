@@ -247,7 +247,7 @@ export class PurchaseReceiptItem {
    */
   @Column({ name: 'drug_id' })
   @Index()
-  drugId: string;
+  drugId: number;
 
   /**
    * ERPNext field: qty (received quantity)

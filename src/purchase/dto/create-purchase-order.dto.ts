@@ -12,8 +12,8 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreatePurchaseOrderItemDto {
-  @IsUUID()
-  drugId: string;
+  @IsNumber()
+  drugId: number;
 
   @IsNumber()
   @Min(0.01)

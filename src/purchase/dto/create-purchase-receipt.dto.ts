@@ -15,8 +15,8 @@ export class CreatePurchaseReceiptItemDto {
   @IsUUID()
   purchaseOrderItemId?: string;
 
-  @IsUUID()
-  drugId: string;
+  @IsNumber()
+  drugId: number;
 
   @IsNumber()
   @Min(0.01)

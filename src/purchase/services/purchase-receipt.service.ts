@@ -211,7 +211,7 @@ export class PurchaseReceiptService {
               drugId: item.drugId,
               quantity: item.stockQuantity, // Use stock quantity (base UOM)
               batchNumber: item.batchNumber,
-              expiryDate: item.expiryDate,
+              expiryDate: item.expiryDate.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD string
               costPrice: item.unitPrice,
               reason: `Purchase Receipt ${receipt.code}`,
               referenceType: 'PURCHASE_RECEIPT',
