@@ -12,5 +12,6 @@ import { StockController } from './stock/stock.controller';
   imports: [TypeOrmModule.forFeature([Pharmacy, PharmacyStock, StockMovement])],
   providers: [PharmacyService, StockService],
   controllers: [PharmacyController, StockController],
+  exports: [StockService, PharmacyService], // Export services for use in other modules
 })
 export class InventoryModule {}
