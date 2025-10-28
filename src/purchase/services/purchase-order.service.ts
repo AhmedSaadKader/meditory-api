@@ -106,10 +106,16 @@ export class PurchaseOrderService {
       await manager.save(PurchaseOrderItem, items);
 
       // Return with items loaded
-      return manager.findOne(PurchaseOrder, {
+      const result = await manager.findOne(PurchaseOrder, {
         where: { id: saved.id },
         relations: ['items', 'supplier'],
       });
+
+      if (!result) {
+        throw new Error('Failed to create purchase order');
+      }
+
+      return result;
     });
   }
 
@@ -226,10 +232,16 @@ export class PurchaseOrderService {
 
       await manager.save(PurchaseOrder, po);
 
-      return manager.findOne(PurchaseOrder, {
+      const result = await manager.findOne(PurchaseOrder, {
         where: { id },
         relations: ['supplier', 'items'],
       });
+
+      if (!result) {
+        throw new Error('Failed to update purchase order');
+      }
+
+      return result;
     });
   }
 
@@ -270,10 +282,16 @@ export class PurchaseOrderService {
 
       await manager.save(PurchaseOrder, po);
 
-      return manager.findOne(PurchaseOrder, {
+      const result = await manager.findOne(PurchaseOrder, {
         where: { id },
         relations: ['supplier', 'items'],
       });
+
+      if (!result) {
+        throw new Error('Failed to update purchase order status');
+      }
+
+      return result;
     });
   }
 

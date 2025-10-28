@@ -30,6 +30,8 @@ import { PasswordCipherService } from '../services/password-cipher.service';
 import { NativeAuthenticationMethod } from '../entities/native-authentication-method.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Ctx } from '../decorators/ctx.decorator';
+import { RequestContext } from '../types/request-context';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -69,8 +71,8 @@ export class UserController {
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
-  async findAll() {
-    const users = await this.userService.findAll();
+  async findAll(@Ctx() ctx: RequestContext) {
+    const users = await this.userService.findAll(ctx);
     return users.map((user) => ({
       userId: user.userId,
       username: user.username,
@@ -119,8 +121,8 @@ export class UserController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const user = await this.userService.findById(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Ctx() ctx: RequestContext) {
+    const user = await this.userService.findById(id, ctx);
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -267,8 +269,9 @@ export class UserController {
   async resetPassword(
     @Param('id', ParseIntPipe) id: number,
     @Body() resetPasswordDto: ResetUserPasswordDto,
+    @Ctx() ctx: RequestContext,
   ) {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(id, ctx);
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -332,13 +335,14 @@ export class UserController {
   async assignRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() assignRoleDto: AssignRoleDto,
+    @Ctx() ctx: RequestContext,
   ) {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(id, ctx);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const role = await this.roleService.findById(assignRoleDto.roleId);
+    const role = await this.roleService.findById(assignRoleDto.roleId, ctx);
     if (!role) {
       throw new NotFoundException('Role not found');
     }

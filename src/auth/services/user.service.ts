@@ -133,8 +133,20 @@ export class UserService {
   /**
    * Update user
    */
-  async update(userId: number, userData: Partial<User>): Promise<User | null> {
-    const user = await this.findById(userId);
+  async update(userId: number, userData: Partial<User>, ctx?: RequestContext): Promise<User | null> {
+    // If ctx is not provided, just update without loading user first
+    if (!ctx) {
+      const user = await this.userRepository.findOne({
+        where: { userId, deletedAt: IsNull() },
+      });
+      if (!user) {
+        return null;
+      }
+      Object.assign(user, userData);
+      return this.userRepository.save(user);
+    }
+
+    const user = await this.findById(userId, ctx);
     if (!user) {
       return null;
     }
@@ -146,8 +158,12 @@ export class UserService {
   /**
    * Soft delete user
    */
-  async softDelete(userId: number): Promise<void> {
-    const user = await this.findById(userId);
+  async softDelete(userId: number, ctx?: RequestContext): Promise<void> {
+    // Load user without context if not provided
+    const user = ctx
+      ? await this.findById(userId, ctx)
+      : await this.userRepository.findOne({ where: { userId, deletedAt: IsNull() } });
+
     if (!user) {
       return;
     }
@@ -215,8 +231,12 @@ export class UserService {
   /**
    * Reset user password (admin operation)
    */
-  async resetPassword(userId: number, newPassword: string): Promise<void> {
-    const user = await this.findById(userId);
+  async resetPassword(userId: number, newPassword: string, ctx?: RequestContext): Promise<void> {
+    // Load user without context if not provided
+    const user = ctx
+      ? await this.findById(userId, ctx)
+      : await this.userRepository.findOne({ where: { userId, deletedAt: IsNull() } });
+
     if (!user) {
       throw new Error('User not found');
     }

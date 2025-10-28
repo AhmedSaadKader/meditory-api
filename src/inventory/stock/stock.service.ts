@@ -1175,7 +1175,21 @@ export class StockService {
       order: { drugId: 'ASC', batchNumber: 'ASC' },
     });
 
-    const valuationData = [];
+    const valuationData: Array<{
+      drugId: number;
+      batchNumber: string;
+      quantity: number;
+      allocatedQuantity: number;
+      availableQuantity: number;
+      costPrice: number;
+      sellingPrice: number;
+      stockValue: number;
+      potentialRevenue: number;
+      potentialProfit: number;
+      profitMargin: number;
+      expiryDate: Date;
+      isExpiringSoon: boolean | undefined;
+    }> = [];
     let totalStockValue = 0;
 
     for (const stock of stocks) {

@@ -142,10 +142,16 @@ export class PurchaseReceiptService {
       await manager.save(PurchaseReceiptItem, items);
 
       // Return with items loaded
-      return manager.findOne(PurchaseReceipt, {
+      const result = await manager.findOne(PurchaseReceipt, {
         where: { id: saved.id },
         relations: ['items', 'supplier', 'purchaseOrder'],
       });
+
+      if (!result) {
+        throw new Error('Failed to create purchase receipt');
+      }
+
+      return result;
     });
   }
 
@@ -213,9 +219,7 @@ export class PurchaseReceiptService {
               batchNumber: item.batchNumber,
               expiryDate: item.expiryDate.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD string
               costPrice: item.unitPrice,
-              reason: `Purchase Receipt ${receipt.code}`,
-              referenceType: 'PURCHASE_RECEIPT',
-              referenceId: receipt.id,
+              notes: `Purchase Receipt ${receipt.code}`,
             },
             userId,
             ctx,
@@ -249,10 +253,8 @@ export class PurchaseReceiptService {
               pharmacyId: receipt.pharmacyId,
               drugId: item.drugId,
               batchNumber: item.batchNumber,
-              quantityChange: -item.stockQuantity, // Negative to reverse
+              adjustmentQuantity: -item.stockQuantity, // Negative to reverse
               reason: `Cancelled Purchase Receipt ${receipt.code}`,
-              referenceType: 'PURCHASE_RECEIPT_CANCELLATION',
-              referenceId: receipt.id,
             },
             userId,
             ctx,
@@ -279,10 +281,16 @@ export class PurchaseReceiptService {
 
       await manager.save(PurchaseReceipt, receipt);
 
-      return manager.findOne(PurchaseReceipt, {
+      const result = await manager.findOne(PurchaseReceipt, {
         where: { id },
         relations: ['supplier', 'purchaseOrder', 'items'],
       });
+
+      if (!result) {
+        throw new Error('Failed to update purchase receipt status');
+      }
+
+      return result;
     });
   }
 

@@ -22,6 +22,8 @@ import { UpdateRoleDto } from '../dto/update-role.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { Allow } from '../decorators/allow.decorator';
 import { Permission } from '../enums/permission.enum';
+import { Ctx } from '../decorators/ctx.decorator';
+import { RequestContext } from '../types/request-context';
 
 @ApiTags('Roles')
 @ApiBearerAuth()
@@ -54,8 +56,8 @@ export class RoleController {
       ],
     },
   })
-  async findAll() {
-    return this.roleService.findAll();
+  async findAll(@Ctx() ctx: RequestContext) {
+    return this.roleService.findAll(ctx);
   }
 
   @Get('permissions')
@@ -104,8 +106,8 @@ export class RoleController {
     status: 404,
     description: 'Role not found',
   })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const role = await this.roleService.findById(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Ctx() ctx: RequestContext) {
+    const role = await this.roleService.findById(id, ctx);
     if (!role) {
       return { error: 'Role not found' };
     }
@@ -130,8 +132,8 @@ export class RoleController {
     status: 403,
     description: 'Insufficient permissions',
   })
-  async create(@Body() createRoleDto: CreateRoleDto) {
-    return this.roleService.create(createRoleDto);
+  async create(@Body() createRoleDto: CreateRoleDto, @Ctx() ctx: RequestContext) {
+    return this.roleService.create(createRoleDto, ctx);
   }
 
   @Patch(':id')
@@ -156,8 +158,9 @@ export class RoleController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoleDto: UpdateRoleDto,
+    @Ctx() ctx: RequestContext,
   ) {
-    return this.roleService.update(id, updateRoleDto);
+    return this.roleService.update(id, updateRoleDto, ctx);
   }
 
   @Delete(':id')
@@ -185,8 +188,8 @@ export class RoleController {
     status: 404,
     description: 'Role not found',
   })
-  async delete(@Param('id', ParseIntPipe) id: number) {
-    await this.roleService.delete(id);
+  async delete(@Param('id', ParseIntPipe) id: number, @Ctx() ctx: RequestContext) {
+    await this.roleService.delete(id, ctx);
     return {
       success: true,
       message: 'Role deleted successfully',
