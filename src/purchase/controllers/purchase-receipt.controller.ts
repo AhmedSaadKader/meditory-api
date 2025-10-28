@@ -50,6 +50,7 @@ export class PurchaseReceiptController {
       ctx.activeOrganizationId!,
       id,
       ctx.activeUserId!,
+      ctx,
       dto,
     );
   }

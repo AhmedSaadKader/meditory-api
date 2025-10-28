@@ -19,6 +19,7 @@ import { CreatePurchaseReceiptDto } from '../dto/create-purchase-receipt.dto';
 import { UpdatePurchaseReceiptStatusDto } from '../dto/update-purchase-receipt-status.dto';
 import { StockService } from '../../inventory/stock/stock.service';
 import { PurchaseOrderService } from './purchase-order.service';
+import { RequestContext } from '../../auth/types/request-context';
 
 @Injectable()
 export class PurchaseReceiptService {
@@ -179,7 +180,8 @@ export class PurchaseReceiptService {
   async updateStatus(
     organizationId: string,
     id: string,
-    userId: string,
+    userId: number,
+    ctx: RequestContext,
     dto: UpdatePurchaseReceiptStatusDto,
   ): Promise<PurchaseReceipt> {
     const receipt = await this.findOne(organizationId, id);
@@ -203,23 +205,27 @@ export class PurchaseReceiptService {
 
         // Post stock movements for each item
         for (const item of receipt.items) {
-          await this.stockService.receiveStock({
-            pharmacyId: receipt.pharmacyId,
-            drugId: item.drugId,
-            quantity: item.stockQuantity, // Use stock quantity (base UOM)
-            batchNumber: item.batchNumber,
-            expiryDate: item.expiryDate,
-            costPrice: item.unitPrice,
-            reason: `Purchase Receipt ${receipt.code}`,
-            referenceType: 'PURCHASE_RECEIPT',
-            referenceId: receipt.id,
-          });
+          await this.stockService.receiveStock(
+            {
+              pharmacyId: receipt.pharmacyId,
+              drugId: item.drugId,
+              quantity: item.stockQuantity, // Use stock quantity (base UOM)
+              batchNumber: item.batchNumber,
+              expiryDate: item.expiryDate,
+              costPrice: item.unitPrice,
+              reason: `Purchase Receipt ${receipt.code}`,
+              referenceType: 'PURCHASE_RECEIPT',
+              referenceId: receipt.id,
+            },
+            userId,
+            ctx,
+          );
         }
 
         receipt.stockPosted = true;
         receipt.docStatus = 1; // Submitted
         receipt.submittedAt = new Date();
-        receipt.submittedBy = userId;
+        receipt.submittedBy = String(userId);
 
         // Update PO received quantities if linked
         if (receipt.purchaseOrderId) {
@@ -238,15 +244,19 @@ export class PurchaseReceiptService {
 
         // Reverse stock movements
         for (const item of receipt.items) {
-          await this.stockService.adjustStock({
-            pharmacyId: receipt.pharmacyId,
-            drugId: item.drugId,
-            batchNumber: item.batchNumber,
-            quantityChange: -item.stockQuantity, // Negative to reverse
-            reason: `Cancelled Purchase Receipt ${receipt.code}`,
-            referenceType: 'PURCHASE_RECEIPT_CANCELLATION',
-            referenceId: receipt.id,
-          });
+          await this.stockService.adjustStock(
+            {
+              pharmacyId: receipt.pharmacyId,
+              drugId: item.drugId,
+              batchNumber: item.batchNumber,
+              quantityChange: -item.stockQuantity, // Negative to reverse
+              reason: `Cancelled Purchase Receipt ${receipt.code}`,
+              referenceType: 'PURCHASE_RECEIPT_CANCELLATION',
+              referenceId: receipt.id,
+            },
+            userId,
+            ctx,
+          );
         }
 
         receipt.docStatus = 2; // Cancelled
