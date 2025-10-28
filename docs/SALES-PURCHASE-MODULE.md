@@ -3,8 +3,9 @@
 ## Table of Contents
 1. [Architecture Decision](#architecture-decision)
 2. [Open Source Inspiration](#open-source-inspiration)
-3. [Entity Design](#entity-design)
-4. [Implementation Plan](#implementation-plan)
+3. [Implementation Status](#implementation-status)
+4. [Entity Design](#entity-design)
+5. [Implementation Plan](#implementation-plan)
 
 ---
 
@@ -62,6 +63,42 @@ After analyzing two mature open-source systems (Vendure and ERPNext), we've chos
 - Our `PurchaseOrder`, `PurchaseReceipt`, `PurchaseInvoice` entities
 - Stock valuation tracking in `StockMovement`
 - Ledger reconciliation methods
+
+---
+
+## Implementation Status
+
+### ✅ Completed
+- **Phase 1: Supplier & Customer Entities**
+  - Supplier entity with ERPNext fields (payment terms, supplier_type, accounts payable)
+  - Customer entity with hybrid ERPNext + pharmacy fields (insurance support)
+  - Module separation: `src/purchase/` and `src/sales/` independent modules
+
+- **Phase 2A: Purchase Order**
+  - PurchaseOrder entity with ERPNext workflow (DRAFT → SUBMITTED → RECEIVED → COMPLETED)
+  - PurchaseOrderItem with UOM conversion and tax tracking
+  - Status transition validation (state machine)
+  - Amendment support (for post-submission changes)
+  - Automatic calculations (totals, taxes, received percentages)
+
+- **Phase 2B: Purchase Receipt**
+  - PurchaseReceipt entity with stock integration
+  - Automatic StockMovement creation when submitted
+  - PurchaseOrder progress tracking (received quantities updated)
+  - Batch number and expiry date tracking
+  - Cancellation support with stock reversal
+  - Idempotency (stockPosted flag prevents duplicate movements)
+
+### 🚧 Pending
+- **Phase 2C: Purchase Invoice & Payment** (invoicing and payment tracking)
+- **Phase 3: Sales Module** (SalesInvoice with Vendure state machine pattern)
+
+### 📍 Current State
+- Modules separated and properly structured
+- ERPNext field mappings documented in [ERPNEXT-FIELD-MAPPINGS.md](./ERPNEXT-FIELD-MAPPINGS.md)
+- Multi-tenant architecture with organization scoping
+- Integration with existing inventory/stock management
+- TypeScript compilation successful (0 errors in purchase/sales modules)
 
 ---
 
