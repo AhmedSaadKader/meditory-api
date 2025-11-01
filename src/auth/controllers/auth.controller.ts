@@ -184,20 +184,25 @@ export class AuthController {
   })
   async register(@Body() registerDto: RegisterDto) {
     try {
-      const user = await this.authService.register(
+      const result = await this.authService.register(
+        registerDto.organizationCode,
         registerDto.username,
         registerDto.password,
         registerDto.firstName,
         registerDto.lastName,
       );
 
+      if ('error' in result) {
+        throw new UnauthorizedException(result.error);
+      }
+
       return {
         success: true,
         message: 'Registration successful. You can now log in.',
         user: {
-          userId: user.userId,
-          username: user.username,
-          verified: user.verified,
+          userId: result.userId,
+          username: result.username,
+          verified: result.verified,
         },
       };
     } catch (error: unknown) {

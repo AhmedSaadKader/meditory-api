@@ -49,7 +49,7 @@ export class AuthService {
         organizationId: organization.id,
         deletedAt: IsNull(),
       },
-      relations: ['roles', 'roles.pharmacies'],
+      relations: ['roles', 'roles.pharmacies', 'authenticationMethods'],
     });
 
     if (!user) {
@@ -107,22 +107,33 @@ export class AuthService {
    * Register a new user with username and password
    */
   async register(
+    organizationCode: string,
     username: string,
     password: string,
     firstName?: string,
     lastName?: string,
-  ): Promise<User> {
+  ): Promise<User | { error: string }> {
     return this.dataSource.transaction(async (manager) => {
-      // 1. Create user
+      // 1. Find organization
+      const organization = await manager.findOne(Organization, {
+        where: { code: organizationCode, isActive: true },
+      });
+
+      if (!organization) {
+        return { error: 'Invalid organization code' };
+      }
+
+      // 2. Create user
       const user = manager.create(User, {
         username,
         firstName,
         lastName,
         verified: true,
+        organizationId: organization.id,
       });
       await manager.save(user);
 
-      // 2. Create authentication method
+      // 3. Create authentication method
       const passwordHash = await this.passwordCipher.hash(password);
 
       const authMethod = manager.create(NativeAuthenticationMethod, {
@@ -134,7 +145,7 @@ export class AuthService {
       });
       await manager.save(authMethod);
 
-      // 3. Assign default role (pharmacist)
+      // 4. Assign default role (pharmacist)
       const defaultRole = await manager.findOne(Role, {
         where: { code: 'pharmacist' },
       });

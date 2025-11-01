@@ -8,6 +8,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
+    description: 'Organization code',
+    example: 'default-org',
+  })
+  @IsString()
+  @IsNotEmpty()
+  organizationCode: string;
+
+  @ApiProperty({
     description: 'Username (unique identifier)',
     example: 'johndoe',
   })
